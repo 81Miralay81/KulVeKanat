@@ -82,7 +82,8 @@ func _physics_process(dt: float) -> void:
 				queue_free()
 				return
 			delme -= 1
-	if _yol > menzil or absf(global_position.x) > 20.5 or absf(global_position.z) > 20.5:
+	var lim: float = kahraman.ana.sinir() + 2.0 if kahraman and kahraman.ana else 20.5
+	if _yol > menzil or absf(global_position.x) > lim or absf(global_position.z) > lim:
 		if patlama_r > 0:
 			_patla()
 		else:

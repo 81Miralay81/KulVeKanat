@@ -1,5 +1,9 @@
 # Sürüm notları
 
+## 0.4.1
+- Düzeltme: açık bölgede okçunun okları, büyücünün ateş topları ve düşman büyüleri 20 metreden sonra kayboluyordu (zindan sınırı kullanılıyordu); artık bölgenin tamamında çalışıyor.
+- Neden: Kül Ovaları'ndaki düşmanlara uzaktan atış yapılamıyordu.
+
 ## 0.4.0 - Gerçek oranlı kahramanlar
 - Üç kahraman yeniden yapıldı, artık gerçek insan oranlarında:
   - **Kılıç Muhafızı:** gladyatör; ızgaralı miğfer, kırmızı tepelik, kol zırhı, omuzluk, deri etek, kalkan.

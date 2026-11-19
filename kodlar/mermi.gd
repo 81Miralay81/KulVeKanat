@@ -58,5 +58,5 @@ func _physics_process(dt: float) -> void:
 			Efekt.parcacik(global_position, 14, Color(0.7, 0.3, 1.0), 0.4, 4.0, 0.0, 0.3)
 			queue_free()
 			return
-	if _omur <= 0 or absf(global_position.x) > 21 or absf(global_position.z) > 21:
+	if _omur <= 0:
 		queue_free()
