@@ -1,7 +1,7 @@
 extends Node
 ## Genel oyun durumu: sürüm, girdiler (klavye, fare, dokunmatik), kayıt.
 
-const SURUM := "0.1.0"
+const SURUM := "0.1.1"
 const DEPO := "81Miralay81/KulVeKanat"
 
 ## Oyunun kullandığı eylemler (klavye tuşları aşağıda tanımlanır).

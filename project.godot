@@ -5,7 +5,7 @@ config_version=5
 
 config/name="Kül ve Kanat"
 config/description="Kanatix: Kül ve Kanat - aksiyon RPG"
-config/version="0.1.0"
+config/version="0.1.1"
 run/main_scene="res://sahneler/ana.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.png"
@@ -42,7 +42,7 @@ common/physics_ticks_per_second=60
 [rendering]
 
 renderer/rendering_method="forward_plus"
-renderer/rendering_method.mobile="mobile"
+renderer/rendering_method.mobile="gl_compatibility"
 rendering_device/fallback_to_opengl3=true
 textures/vram_compression/import_etc2_astc=true
 anti_aliasing/quality/msaa_3d=1
