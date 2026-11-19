@@ -14,6 +14,7 @@ var _demirci_liste: VBoxContainer
 var _simyaci_liste: VBoxContainer
 var _tuccar_liste: VBoxContainer
 var _baslik_font: Font
+var _paneller := {}
 
 const SOZLER := {
 	"demirci": ["\"Kor Kral'ın demirini bile döverim. Getir şu kılıcı.\"", "\"Bir vuruş daha... işte, artık daha keskin.\""],
@@ -45,6 +46,7 @@ func _ready() -> void:
 	var ust := HBoxContainer.new()
 	dikey.add_child(ust)
 	var b := _etiket("SON SIĞINAK", 40, Color(1, 0.75, 0.4))
+	b.name = "Baslik"
 	b.add_theme_font_override("font", _baslik_font)
 	ust.add_child(b)
 	var alt := _etiket("   Kanatlıların son kasabası", 20, Color(0.8, 0.72, 0.62))
@@ -56,7 +58,7 @@ func _ready() -> void:
 	_altin = _etiket("", 28, Color(1, 0.85, 0.4))
 	ust.add_child(_altin)
 	var don := Button.new()
-	don.text = "MACERAYA DÖN"
+	don.text = "GERİ"
 	don.custom_minimum_size = Vector2(250, 56)
 	don.pressed.connect(func():
 		visible = false
@@ -97,6 +99,7 @@ func _esnaf(kok: Container, ad: String, is_ad: String, model: String, anim: Stri
 	st.content_margin_bottom = 8
 	panel.add_theme_stylebox_override("panel", st)
 	kok.add_child(panel)
+	_paneller[anahtar] = panel
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
 	panel.add_child(v)
@@ -125,9 +128,11 @@ func _esnaf(kok: Container, ad: String, is_ad: String, model: String, anim: Stri
 	return liste
 
 
-func ac() -> void:
+func ac(esnaf := "") -> void:
 	position = Vector2.ZERO
 	size = get_viewport_rect().size
+	for k in _paneller:
+		_paneller[k].visible = esnaf == "" or k == esnaf
 	visible = true
 	_mesaj.text = "Altınını burada harca. Eşyalarını demirciye yükselt, iksirini tamamla."
 	yenile()

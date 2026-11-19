@@ -1,7 +1,7 @@
 extends Node
 ## Genel oyun durumu: sürüm, girdiler (klavye, fare, dokunmatik), kayıt.
 
-const SURUM := "0.2.1"
+const SURUM := "0.3.0"
 const DEPO := "81Miralay81/KulVeKanat"
 
 ## Oyunun kullandığı eylemler (klavye tuşları aşağıda tanımlanır).
@@ -36,6 +36,8 @@ func _ready() -> void:
 			secili_sinif = arg.trim_prefix("--sinif=")
 	if "--otomatik-test" in OS.get_cmdline_user_args():
 		add_child(load("res://test/otomatik.gd").new())
+	if "--dunya-test" in OS.get_cmdline_user_args():
+		add_child(load("res://test/dunya.gd").new())
 	if "--menu-test" in OS.get_cmdline_user_args():
 		add_child(load("res://test/menu.gd").new())
 	if "--boss-test" in OS.get_cmdline_user_args():
@@ -47,7 +49,7 @@ func _tuslari_tanimla() -> void:
 		"sol": [KEY_A, KEY_LEFT], "sag": [KEY_D, KEY_RIGHT],
 		"yukari": [KEY_W, KEY_UP], "asagi": [KEY_S, KEY_DOWN],
 		"saldir": [KEY_J], "yetenek1": [KEY_1, KEY_K], "yetenek2": [KEY_2, KEY_L],
-		"yetenek3": [KEY_3, KEY_SPACE], "yetenek4": [KEY_4, KEY_F], "envanter": [KEY_I, KEY_B], "fps": [KEY_F3],
+		"yetenek3": [KEY_3, KEY_SPACE], "yetenek4": [KEY_4, KEY_F], "envanter": [KEY_I, KEY_B], "fps": [KEY_F3], "etkilesim": [KEY_E, KEY_ENTER],
 		"son_vurus": [KEY_R], "iksir": [KEY_Q], "duraklat": [KEY_ESCAPE, KEY_P], "harita": [KEY_M, KEY_TAB],
 	}
 	for ad in tuslar:
@@ -60,7 +62,7 @@ func _tuslari_tanimla() -> void:
 	# oyun kolu (Xbox tipi)
 	var kol := {"saldir": JOY_BUTTON_X, "yetenek1": JOY_BUTTON_Y, "yetenek2": JOY_BUTTON_B,
 		"yetenek3": JOY_BUTTON_A, "yetenek4": JOY_BUTTON_RIGHT_SHOULDER,
-		"son_vurus": JOY_BUTTON_LEFT_SHOULDER, "iksir": JOY_BUTTON_DPAD_UP, "duraklat": JOY_BUTTON_START, "harita": JOY_BUTTON_BACK, "envanter": JOY_BUTTON_DPAD_DOWN}
+		"son_vurus": JOY_BUTTON_LEFT_SHOULDER, "iksir": JOY_BUTTON_DPAD_UP, "duraklat": JOY_BUTTON_START, "harita": JOY_BUTTON_BACK, "envanter": JOY_BUTTON_DPAD_DOWN, "etkilesim": JOY_BUTTON_DPAD_RIGHT}
 	for ad in kol:
 		var j := InputEventJoypadButton.new()
 		j.button_index = kol[ad]

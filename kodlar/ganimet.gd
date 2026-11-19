@@ -24,6 +24,16 @@ func _ready() -> void:
 		var m: Node3D = load("res://assets/zindan/coin_stack_small.glb").instantiate()
 		_govde.add_child(m)
 		_govde.scale = Vector3.ONE * 0.9
+	elif tur == "esya" and Esya.model_olustur(str(esya.get("model", ""))) != null:
+		var gm := Esya.model_olustur(str(esya.get("model", "")))
+		_govde.add_child(gm)
+		_govde.position.y = 0.5
+		gm.rotation.z = deg_to_rad(25)
+		var aura := MeshInstance3D.new()
+		aura.mesh = Efekt.halka_mesh(0.5, 0.9)
+		aura.material_override = Efekt.parlak_mat(renk, 2.0)
+		aura.position.y = 0.05
+		add_child(aura)
 	else:
 		var m := MeshInstance3D.new()
 		var p: PrimitiveMesh = PrismMesh.new() if tur == "esya" else SphereMesh.new()

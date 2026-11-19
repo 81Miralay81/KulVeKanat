@@ -100,19 +100,25 @@ func _draw() -> void:
 		if _canta_ikon:
 			draw_texture_rect(_canta_ikon, Rect2(ca.position + Vector2(6, 6), Vector2(36, 36)), false, Color(1, 0.85, 0.55))
 		_yazi(ca.position + Vector2(48, 30), "ENVANTER (I)  %d/%d" % [kahraman.canta.size(), Kahraman.CANTA_MAX], 16, Color(0.95, 0.88, 0.75))
+	if ana and not ana.etkilesim.is_empty() and not mobil_duzen:
+		var ea := etkilesim_alani()
+		draw_rect(ea, Color(0.12, 0.06, 0.03, 0.88))
+		draw_rect(ea, Color(1, 0.7, 0.3), false, 2.0)
+		_yazi(ea.position + Vector2(0, 32), "[E]  " + str(ana.etkilesim["ad"]), 24, Color(1, 0.88, 0.6), HORIZONTAL_ALIGNMENT_CENTER, ea.size.x)
 	if Oyun.fps_goster:
 		_yazi(Vector2(12, b.y - 14 if mobil_duzen else 22), "FPS %d" % Engine.get_frames_per_second(), 18, Color(0.6, 1, 0.6))
 	if buyuk_harita:
 		draw_rect(Rect2(Vector2.ZERO, b), Color(0, 0, 0, 0.72))
 		var r := minf(b.x, b.y) * 0.4
 		var c := b * 0.5 + Vector2(0, 20)
-		_yazi(Vector2(0, c.y - r - 46), "KÜL OVALARI  ·  YIKIK MAHZEN", 34, Color(1, 0.78, 0.45), HORIZONTAL_ALIGNMENT_CENTER, b.x, _baslik)
+		var bslk := "KÜL OVALARI" if ana and ana.mod == "bolge" else (str(ana.aktif_zindan.get("ad", "ZİNDAN")).to_upper() if ana else "")
+		_yazi(Vector2(0, c.y - r - 46), bslk, 34, Color(1, 0.78, 0.45), HORIZONTAL_ALIGNMENT_CENTER, b.x, _baslik)
 		_harita_ciz(c, r, true)
 		var lx := c.x + r + 40
 		var ly := c.y - 60
 		if lx + 180 > b.x:
 			lx = 30
-		for satir in [[Color(1, 0.75, 0.3), "Sen"], [Color(0.95, 0.2, 0.15), "Düşman"], [Color(1, 0.55, 0.1), "Elit / Boss"], [Color(0.4, 0.65, 1.0), "Ganimet"], [Color(0.6, 0.55, 0.5), "Sütun"]]:
+		for satir in [[Color(1, 0.75, 0.3), "Sen"], [Color(0.95, 0.2, 0.15), "Düşman"], [Color(1, 0.55, 0.1), "Elit / Boss"], [Color(0.95, 0.35, 0.1), "Zindan kapısı"], [Color(1, 0.8, 0.25), "Sandık"], [Color(0.4, 1.0, 0.5), "Esnaf"]]:
 			draw_circle(Vector2(lx + 8, ly - 6), 7, satir[0])
 			_yazi(Vector2(lx + 24, ly), satir[1], 20, Color(0.92, 0.88, 0.8))
 			ly += 30
@@ -320,47 +326,87 @@ func harita_ac_kapa() -> void:
 	Ses.cal("dugme", -6.0, 0.0)
 
 
-func _harita_nokta(w: Vector3, c: Vector2, olcek: float) -> Vector2:
+func _harita_nokta(w: Vector3, c: Vector2, olcek: float, merkez := Vector3.ZERO) -> Vector2:
 	# Kamera 45° döndüğü için harita da aynı açıyla çizilir: ekranda yukarı = haritada yukarı.
 	var sag := Vector3(1, 0, -1).normalized()
 	var ileri := Vector3(-1, 0, -1).normalized()
-	return c + Vector2(w.dot(sag), -w.dot(ileri)) * olcek
+	var f := w - merkez
+	return c + Vector2(f.dot(sag), -f.dot(ileri)) * olcek
 
 
 func _harita_ciz(c: Vector2, r: float, buyuk: bool) -> void:
-	var olcek := r / (Dunya.YARI * 1.48)
+	var bolge: bool = ana != null and ana.mod == "bolge"
+	var Y: float = Bolge.YARI if bolge else Dunya.YARI
+	var merkez := Vector3.ZERO
+	var olcek := r / (Y * 1.48)
+	if bolge and not buyuk:
+		merkez = kahraman.global_position     # küçük harita oyuncuyu ortalar
+		olcek = r / 34.0
 	if not buyuk:
 		draw_circle(c, r + 6, Color(0.05, 0.04, 0.05, 0.85))
 		draw_arc(c, r + 6, 0, TAU, 56, ALTIN_K, 3.0, true)
 		draw_arc(c, r + 2, 0, TAU, 56, ALTIN_R, 1.5, true)
-	var Y := Dunya.YARI
+	var ic := func(p: Vector2) -> bool: return buyuk or p.distance_to(c) < r - 3
 	var koseler := PackedVector2Array([
-		_harita_nokta(Vector3(-Y, 0, -Y), c, olcek), _harita_nokta(Vector3(Y, 0, -Y), c, olcek),
-		_harita_nokta(Vector3(Y, 0, Y), c, olcek), _harita_nokta(Vector3(-Y, 0, Y), c, olcek)])
-	draw_colored_polygon(koseler, Color(0.28, 0.22, 0.2, 0.9))
-	# arka duvarlar (kalın), ön kenar (ince)
-	draw_line(koseler[0], koseler[1], Color(0.75, 0.62, 0.45), 4.0 if buyuk else 2.5)
-	draw_line(koseler[0], koseler[3], Color(0.75, 0.62, 0.45), 4.0 if buyuk else 2.5)
-	draw_line(koseler[1], koseler[2], Color(0.5, 0.42, 0.35), 1.5)
-	draw_line(koseler[2], koseler[3], Color(0.5, 0.42, 0.35), 1.5)
+		_harita_nokta(Vector3(-Y, 0, -Y), c, olcek, merkez), _harita_nokta(Vector3(Y, 0, -Y), c, olcek, merkez),
+		_harita_nokta(Vector3(Y, 0, Y), c, olcek, merkez), _harita_nokta(Vector3(-Y, 0, Y), c, olcek, merkez)])
+	if buyuk or not bolge:
+		draw_colored_polygon(koseler, Color(0.3, 0.33, 0.22, 0.92) if bolge else Color(0.28, 0.22, 0.2, 0.9))
+		draw_polyline(PackedVector2Array([koseler[0], koseler[1], koseler[2], koseler[3], koseler[0]]), Color(0.75, 0.62, 0.45), 3.0 if buyuk else 2.0)
+	else:
+		draw_circle(c, r - 2, Color(0.3, 0.33, 0.22, 0.92))
 	var nb := 1.6 if buyuk else 1.0
-	for s in Dunya.SUTUNLAR:
-		draw_circle(_harita_nokta(s, c, olcek), 4.0 * nb, Color(0.6, 0.55, 0.5))
+	if bolge:
+		# yollar, köy, zindan kapıları, esnaflar
+		for zd in Bolge.ZINDANLAR:
+			var a := _harita_nokta(Vector3.ZERO, c, olcek, merkez)
+			var bz := _harita_nokta(zd["konum"], c, olcek, merkez)
+			if buyuk:
+				draw_line(a, bz, Color(0.55, 0.42, 0.28), 5.0)
+		var kp := _harita_nokta(Bolge.KOY, c, olcek, merkez)
+		var kr := Bolge.KOY_YARICAP * olcek
+		if ic.call(kp) or buyuk:
+			draw_circle(kp, kr, Color(0.55, 0.42, 0.3, 0.8))
+			draw_arc(kp, kr, 0, TAU, 32, Color(1, 0.8, 0.4), 2.0, true)
+			if buyuk:
+				_yazi(kp + Vector2(-120, kr + 26), "SON SIĞINAK (köy)", 18, Color(1, 0.9, 0.7), HORIZONTAL_ALIGNMENT_CENTER, 240)
+		for n in get_tree().get_nodes_in_group("npc"):
+			var np := _harita_nokta(n.global_position, c, olcek, merkez)
+			if ic.call(np):
+				draw_circle(np, 4.0 * nb, n.veri["renk"])
+		for zd in Bolge.ZINDANLAR:
+			var zp := _harita_nokta(zd["konum"], c, olcek, merkez)
+			var bitti: bool = zd["id"] in ana.temizlenen
+			if ic.call(zp):
+				draw_rect(Rect2(zp - Vector2(7, 7) * nb, Vector2(14, 14) * nb), Color(0.4, 0.4, 0.4) if bitti else Color(0.95, 0.35, 0.1))
+				draw_rect(Rect2(zp - Vector2(7, 7) * nb, Vector2(14, 14) * nb), Color(1, 0.85, 0.5), false, 2.0)
+				if buyuk:
+					_yazi(zp + Vector2(-130, 30), "%s · Sv %d+%s" % [zd["ad"], zd["seviye"], " ✓" if bitti else ""], 17, Color(1, 0.85, 0.6), HORIZONTAL_ALIGNMENT_CENTER, 260)
+			elif not buyuk:
+				# haritanın kenarında yön oku
+				var yon := (zp - c).normalized()
+				var kenar := c + yon * (r - 9)
+				draw_circle(kenar, 5, Color(0.95, 0.35, 0.1) if not bitti else Color(0.5, 0.5, 0.5))
+	else:
+		for s in Dunya.SUTUNLAR:
+			draw_circle(_harita_nokta(s, c, olcek), 4.0 * nb, Color(0.6, 0.55, 0.5))
+		if ana and ana._cikis and is_instance_valid(ana._cikis):
+			draw_circle(_harita_nokta(ana._cikis.global_position, c, olcek), 7.0 * nb, Color(0.4, 0.8, 1.0))
 	for sd in get_tree().get_nodes_in_group("sandik"):
-		if not sd.acik:
-			var sp := _harita_nokta(sd.global_position, c, olcek)
-			draw_rect(Rect2(sp - Vector2(3.5, 3.5) * nb, Vector2(7, 7) * nb), Color(1, 0.8, 0.25))
+		if not sd.acik and sd.is_inside_tree():
+			var sp := _harita_nokta(sd.global_position, c, olcek, merkez)
+			if ic.call(sp):
+				draw_rect(Rect2(sp - Vector2(3.5, 3.5) * nb, Vector2(7, 7) * nb), Color(1, 0.8, 0.25))
 	for g in get_tree().get_nodes_in_group("ganimet"):
-		var renk := Color(1, 0.82, 0.35)
-		if g.tur == "esya":
-			renk = Esya.renk(g.esya)
-		elif g.tur == "iksir":
-			renk = Color(1, 0.3, 0.3)
-		draw_circle(_harita_nokta(g.global_position, c, olcek), 2.5 * nb, renk)
+		var gp := _harita_nokta(g.global_position, c, olcek, merkez)
+		if ic.call(gp):
+			draw_circle(gp, 2.5 * nb, Esya.renk(g.esya) if g.tur == "esya" else Color(1, 0.3, 0.3))
 	for d in get_tree().get_nodes_in_group("dusman"):
 		if d.olu:
 			continue
-		var p := _harita_nokta(d.global_position, c, olcek)
+		var p := _harita_nokta(d.global_position, c, olcek, merkez)
+		if not ic.call(p):
+			continue
 		if d.boss:
 			draw_circle(p, 6.0 * nb, Color(1, 0.45, 0.05))
 			draw_arc(p, 8.0 * nb, 0, TAU, 20, Color(1, 0.8, 0.4), 1.5, true)
@@ -370,7 +416,7 @@ func _harita_ciz(c: Vector2, r: float, buyuk: bool) -> void:
 			draw_circle(p, 2.6 * nb, Color(0.95, 0.2, 0.15))
 	# oyuncu: baktığı yönü gösteren ok
 	if kahraman:
-		var p := _harita_nokta(kahraman.global_position, c, olcek)
+		var p := _harita_nokta(kahraman.global_position, c, olcek, merkez)
 		var sag := Vector3(1, 0, -1).normalized()
 		var ileri := Vector3(-1, 0, -1).normalized()
 		var yon := Vector2(kahraman.bakis.dot(sag), -kahraman.bakis.dot(ileri)).normalized()
@@ -383,6 +429,10 @@ func _harita_ciz(c: Vector2, r: float, buyuk: bool) -> void:
 	if not buyuk:
 		_yazi(Vector2(c.x - r, c.y + r + 24), "HARİTA (M)" if not mobil_duzen else "HARİTA", 14, Color(0.85, 0.78, 0.65), HORIZONTAL_ALIGNMENT_CENTER, r * 2)
 
+
+func etkilesim_alani() -> Rect2:
+	var b := get_viewport_rect().size
+	return Rect2(Vector2(b.x * 0.5 - 260, b.y - 205), Vector2(520, 46))
 
 func canta_alani() -> Rect2:
 	var mh := kucuk_harita_alani()

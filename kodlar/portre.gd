@@ -26,6 +26,10 @@ static func yap(model: String, anim: String, boyut: Vector2i, sakla: Array = [],
 			var ust := n.get_parent()
 			if ust is BoneAttachment3D and ust.name.begins_with("handslot") and not n.name in sakla:
 				n.visible = false
+	if "__yay__" in sakla:
+		var el := m.find_child("handslot_r", true, false)
+		if el:
+			el.add_child(Esya.yay_modeli())
 	var ap: AnimationPlayer = m.find_child("AnimationPlayer", true, false)
 	if ap and ap.has_animation(anim):
 		ap.get_animation(anim).loop_mode = Animation.LOOP_LINEAR

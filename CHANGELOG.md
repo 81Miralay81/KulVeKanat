@@ -1,5 +1,17 @@
 # Sürüm notları
 
+## 0.3.0 - Açık dünya
+- **Kül Ovaları:** 136 x 136 m açık bölge; dağlarla çevrili, ağaçlı, kül lekeli. Düşmanlar dalga yerine sürüler halinde dolaşır; yaklaşınca saldırır, temizlenen sürü bir süre sonra yeniden gelir.
+- **Son Sığınak köyü:** bölgenin ortasında; demirhane, meyhane, pazar, kilise, evler, değirmen, kuyu. Esnaflar (Demirci Haldun, Simyacı Nevra, Tüccar Kerem) köyde duruyor: yanına git, "KONUŞ" (telefonda düğme, bilgisayarda E). Köyde düşmanlar peşini bırakır.
+- **Zindanlar:** Yıkık Mahzen (Seviye 1+, boss Kor Avcısı Garran) ve Kemik Çukuru (Seviye 8+, boss Kemik Rahibi Vezra). Kapıya git, "GİR". Dalgalar + boss, sonunda köye dönüş kapısı.
+- **Harita:** küçük harita seni ortalar, zindan yönlerini kenarda gösterir; büyük harita bütün bölgeyi, köyü, zindanları, sandıkları ve esnafları gösterir.
+- **Düşman can çubukları:** her düşmanın başının üstünde (elit sarı, boss turuncu).
+- **Sınıf savunmaları ayrıştı:** Muhafız zırh %32 ve yüksek can; Avcı zırh %12 ve %18 kaçınma; Büyücü kırılgan (zırh %3). Aldığın hasar başının üstünde görünür.
+- **Eşyalar sınıfa göre:** Muhafız kılıç, balta ve kalkan; Avcı yay; Büyücü asa ve değnek. Yerde gerçek modeliyle görünür; takınca karakterin elinde (Muhafız kalkanı sol kolunda) görünür.
+- **Gölge Avcı artık yayla ok atıyor.** Kamera biraz geriden bakıyor.
+- Ölünce köyde dirilirsin (altının %10'u düşer).
+- Neden: Tek harita dardı, NPC'ler oyunun ortasında açılıyordu, eşyalar gerçek görünmüyordu ve sınıfların savunması aynı geliyordu.
+
 ## 0.2.1
 - Donma düzeltmeleri (özellikle telefon): telefonda ek ışıklar kapalı (meşale, sandık, eşya, mermi ışıkları; uyumluluk çiziminde her ışık ek bir çizim turu demek), 3B çözünürlük telefonda %75 (Düşük: %60), telefonda gölge kapalı (Yüksek hariç).
 - Altın artık yere düşmüyor, doğrudan sana geçiyor (yüzlerce altın yığını birikip oyunu yavaşlatıyordu). Yerde en fazla 15 eşya kalır, fazlası çantaya gider.

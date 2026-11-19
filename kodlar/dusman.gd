@@ -9,6 +9,7 @@ const TURLER := {
 	"haydut": {"model": "Skeleton_Rogue", "can": 65.0, "hiz": 5.0, "hasar": 11.0, "menzil": 1.5, "xp": 16, "silah": "Skeleton_Blade", "olcek": 0.95, "ad": "Kül Haydudu"},
 	"savasci": {"model": "Skeleton_Warrior", "can": 150.0, "hiz": 2.7, "hasar": 18.0, "menzil": 1.8, "xp": 30, "silah": "Skeleton_Axe", "olcek": 1.12, "ad": "Kül Muhafızı"},
 	"buyucu": {"model": "Skeleton_Mage", "can": 75.0, "hiz": 2.6, "hasar": 14.0, "menzil": 9.0, "xp": 24, "silah": "Skeleton_Staff", "olcek": 1.0, "uzak": true, "ad": "Kül Büyücüsü"},
+	"vezra": {"model": "Skeleton_Mage", "can": 4200.0, "hiz": 2.4, "hasar": 30.0, "menzil": 11.0, "xp": 900, "silah": "Skeleton_Staff", "olcek": 2.2, "boss": true, "uzak": true, "ad": "Kemik Rahibi Vezra"},
 	"garran": {"model": "Skeleton_Warrior", "can": 3200.0, "hiz": 3.1, "hasar": 34.0, "menzil": 2.8, "xp": 600, "silah": "Skeleton_Axe", "olcek": 2.3, "boss": true, "ad": "Kor Avcısı Garran"},
 }
 const DONGU := ["Idle", "Idle_Combat", "Walking_D_Skeletons", "Running_A", "Running_C", "Walking_A", "2H_Melee_Idle"]
@@ -26,6 +27,7 @@ var boss := false
 var olu := false
 var yaricap := 0.5
 var ad := ""
+var aggro := true            ## false: oyuncu yaklaşana (ya da vurana) kadar yerinde bekler
 
 var kahraman: Node3D
 var ana: Node
@@ -44,6 +46,28 @@ var _yavas := 0.0
 var _boss_yetenek := 6.0
 var _boss_cagir := 14.0
 var _etiket: Label3D
+var _cubuk: MeshInstance3D
+var _cubuk_mat: ShaderMaterial
+var _cubuk_gorunur := 0.0
+
+const CUBUK_SHADER := """
+shader_type spatial;
+render_mode unshaded, depth_test_disabled, cull_disabled, shadows_disabled;
+uniform float doluluk = 1.0;
+uniform vec4 renk : source_color = vec4(0.9, 0.15, 0.1, 1.0);
+uniform float gorunur = 1.0;
+void vertex() {
+	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
+}
+void fragment() {
+	float kenar = step(UV.x, 0.015) + step(0.985, UV.x) + step(UV.y, 0.14) + step(0.86, UV.y);
+	vec3 c = UV.x < doluluk ? renk.rgb : vec3(0.1, 0.03, 0.03);
+	if (kenar > 0.0) { c = vec3(0.0); }
+	ALBEDO = c;
+	ALPHA = 0.92 * gorunur;
+}
+"""
+static var _cubuk_shader: Shader
 
 
 func kur(t: String, dalga: int, elit_mi := false) -> void:
@@ -124,6 +148,26 @@ func _ready() -> void:
 		if f:
 			_etiket.font = f
 		add_child(_etiket)
+	# Can çubuğu (başının üstünde; normal düşmanlarda ilk vuruştan sonra, elit ve boss'ta hep görünür)
+	if _cubuk_shader == null:
+		_cubuk_shader = Shader.new()
+		_cubuk_shader.code = CUBUK_SHADER
+	_cubuk = MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(1.9, 0.2) if boss else (Vector2(1.3, 0.16) if elit else Vector2(0.95, 0.13))
+	_cubuk.mesh = q
+	_cubuk_mat = ShaderMaterial.new()
+	_cubuk_mat.shader = _cubuk_shader
+	_cubuk_mat.render_priority = 20
+	_cubuk_mat.set_shader_parameter("renk", Color(1.0, 0.45, 0.05) if boss else (Color(1.0, 0.7, 0.15) if elit else Color(0.9, 0.15, 0.1)))
+	_cubuk.material_override = _cubuk_mat
+	_cubuk.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_cubuk.position.y = 2.2 * olcek + 0.25
+	add_child(_cubuk)
+	_cubuk_gorunur = 1.0
+	_cubuk_mat.set_shader_parameter("gorunur", _cubuk_gorunur)
+	if _etiket:
+		_etiket.position.y = _cubuk.position.y + 0.32
 	# Yerden çıkış
 	_durum = "dogus"
 	var dogus_anim := "Spawn_Ground_Skeletons" if anim.has_animation("Spawn_Ground_Skeletons") else "Idle"
@@ -163,10 +207,16 @@ func _physics_process(dt: float) -> void:
 	var yon := fark.normalized() if mesafe > 0.01 else Vector3.FORWARD
 	var kahraman_olu: bool = kahraman.durum == "olu"
 
+	# açık bölgede: yaklaşınca saldırır, köye giren oyuncunun peşini bırakır
+	if ana and ana.mod == "bolge":
+		if ana.koyde_mi():
+			aggro = false
+		elif not aggro and mesafe < (20.0 if boss else 14.0):
+			aggro = true
 	match _durum:
 		"kovala":
 			var istenen := Vector3.ZERO
-			if kahraman_olu:
+			if kahraman_olu or not aggro:
 				istenen = Vector3.ZERO
 			elif bilgi.get("uzak", false):
 				if mesafe > 7.5:
@@ -266,17 +316,21 @@ func _buyu_saldirisi(yon: Vector3) -> void:
 	_saldiri_bekleme = randf_range(2.2, 3.2)
 	get_tree().create_timer(0.45, false).timeout.connect(func():
 		if not olu and is_inside_tree():
-			_mermi_at())
+			if boss:
+				for i in 5:
+					_mermi_at(deg_to_rad(-30.0 + i * 15.0))
+			else:
+				_mermi_at())
 
 
-func _mermi_at() -> void:
+func _mermi_at(aci := 0.0) -> void:
 	var m := Mermi.new()
 	m.hasar = hasar
 	m.kahraman = kahraman
 	get_parent().add_child(m)
 	m.global_position = global_position + Vector3(0, 1.4, 0) + model.global_transform.basis.z * 0.6
 	var hedef := kahraman.global_position + Vector3(0, 1.0, 0)
-	m.yon = (hedef - m.global_position).normalized()
+	m.yon = (hedef - m.global_position).normalized().rotated(Vector3.UP, aci)
 	Ses.cal("buyu", -8.0)
 
 
@@ -312,7 +366,11 @@ func hasar_al(miktar: float, kritik: bool, kaynak: Vector3, itme: float) -> void
 	if olu or _durum == "dogus":
 		return
 	can -= miktar
+	aggro = true
 	_flas_deger = 1.0
+	_cubuk_gorunur = 1.0
+	_cubuk_mat.set_shader_parameter("gorunur", 1.0)
+	_cubuk_mat.set_shader_parameter("doluluk", clampf(can / can_max, 0.0, 1.0))
 	var renk := Color(1.0, 0.82, 0.2) if kritik else Color(1, 1, 1)
 	Efekt.hasar_yazisi(global_position + Vector3(0, 2.2 * model.scale.y / 1.0 * 0.8 + 0.4, 0), str(int(miktar)) + ("!" if kritik else ""), renk, kritik)
 	Efekt.vurus_kivilcim(global_position + Vector3(0, 1.0, 0), kritik)
@@ -347,6 +405,8 @@ func _ol() -> void:
 	Efekt.olum_kulu(global_position)
 	Ses.cal("olum", -4.0)
 	oldu_sinyal.emit(self)
+	if _cubuk:
+		_cubuk.queue_free()
 	if _etiket:
 		_etiket.queue_free()
 	var tw := create_tween()

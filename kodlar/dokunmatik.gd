@@ -9,6 +9,7 @@ const OLU_BOLGE := 0.12
 
 var kahraman: Node      ## bekleme süreleri ve mana için
 var hud: Node           ## büyük harita açıkken düğmeler çizilmez
+var ana: Node           ## yakında NPC / zindan kapısı varsa "etkileşim" düğmesi çıkar
 var _parmak := {}       ## parmak numarası -> "joy" ya da eylem adı
 var _joy_merkez := Vector2.ZERO
 var _joy_uc := Vector2.ZERO
@@ -57,6 +58,7 @@ func _yerlesim() -> void:
 	_dugmeler["iksir"] = {"merkez": Vector2(b.x - 430, b.y - 58), "r": 34.0}
 	_dugmeler["duraklat"] = {"merkez": Vector2(b.x - 44, 44), "r": 28.0}
 	_dugmeler["canta"] = {"merkez": Vector2(b.x - 112, 44), "r": 28.0}
+	_dugmeler["etkilesim"] = {"merkez": Vector2(b.x * 0.5, b.y - 92), "r": 52.0}
 	queue_redraw()
 
 
@@ -87,6 +89,8 @@ func _bas(index: int, p: Vector2) -> bool:
 	var en_yakin := ""
 	var en_yakin_m := INF
 	for ad in _dugmeler:
+		if ad == "etkilesim" and (ana == null or ana.etkilesim.is_empty()):
+			continue
 		var d: Dictionary = _dugmeler[ad]
 		var m := p.distance_to(d["merkez"])
 		if m < d["r"] * 1.3 and m < en_yakin_m:
@@ -97,6 +101,11 @@ func _bas(index: int, p: Vector2) -> bool:
 			if duraklat_cagri.is_valid():
 				duraklat_cagri.call()
 			return true
+		if en_yakin == "etkilesim":
+			if ana and not ana.etkilesim.is_empty():
+				ana.etkilesim_yap()
+				return true
+			en_yakin = ""
 		if en_yakin == "canta":
 			if envanter_cagri.is_valid():
 				envanter_cagri.call()
@@ -194,6 +203,15 @@ func _draw() -> void:
 		var c: Vector2 = d["merkez"]
 		var r: float = d["r"]
 		var basili: bool = _basili.has(ad)
+		if ad == "etkilesim":
+			if ana and not ana.etkilesim.is_empty():
+				draw_circle(c, r, Color(0.35, 0.18, 0.05, 0.85))
+				draw_arc(c, r, 0, TAU, 40, Color(1, 0.75, 0.35), 4.0, true)
+				var yazi: String = ana.etkilesim["ad"]
+				draw_string(_font, c + Vector2(-r, 8), "KONUŞ" if ana.etkilesim["tur"] == "npc" else ("GİR" if ana.etkilesim["tur"] == "zindan" else "DÖN"), HORIZONTAL_ALIGNMENT_CENTER, r * 2, 24, Color.WHITE)
+				draw_string_outline(_font, c + Vector2(-260, -r - 14), yazi, HORIZONTAL_ALIGNMENT_CENTER, 520, 22, 6, Color(0, 0, 0, 0.9))
+				draw_string(_font, c + Vector2(-260, -r - 14), yazi, HORIZONTAL_ALIGNMENT_CENTER, 520, 22, Color(1, 0.85, 0.55))
+			continue
 		if ad == "canta":
 			draw_circle(c, r, Color(0, 0, 0, 0.4))
 			draw_arc(c, r, 0, TAU, 32, Color(1, 0.8, 0.5, 0.6), 2.0, true)

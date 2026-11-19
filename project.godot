@@ -5,7 +5,7 @@ config_version=5
 
 config/name="Kül ve Kanat"
 config/description="Kanatix: Kül ve Kanat - aksiyon RPG"
-config/version="0.2.1"
+config/version="0.3.0"
 run/main_scene="res://sahneler/ana.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.png"

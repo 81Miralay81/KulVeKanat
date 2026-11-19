@@ -28,7 +28,7 @@ var iksir := 3
 var esyalar := {}             ## yuva -> eşya
 var canta: Array = []          ## çantadaki eşyalar
 const CANTA_MAX := 24
-var temel := {"hasar": 28.0, "can": 320.0, "mana": 120.0, "kritik": 8.0, "hiz": 0.0, "zirh": 0.0}
+var temel := {"hasar": 28.0, "can": 320.0, "mana": 120.0, "kritik": 8.0, "hiz": 0.0, "zirh": 0.0, "kacinma": 0.0}
 
 # --- durum
 var durum := "serbest"        ## serbest, eylem, kasirga, atilim, olu
@@ -112,6 +112,7 @@ func _ready() -> void:
 	can = deger("can")
 	mana = deger("mana")
 	anim.play(bilgi["bekleme_anim"])
+	gorunum_guncelle.call_deferred()
 
 
 # ------------------------------------------------------------------ özellikler
@@ -130,6 +131,11 @@ func _ozellikleri_hesapla() -> void:
 	temel["kritik"] = b["kritik"]
 	temel["zirh"] = b["zirh"]
 	temel["hiz"] = b["hiz"]
+	temel["kacinma"] = b.get("kacinma", 0.0)
+
+
+func zirh_orani() -> float:
+	return clampf(deger("zirh"), 0.0, 75.0)
 
 
 func yetenek_ad(eylem: String) -> String:
@@ -160,6 +166,8 @@ func kayit_yukle(d: Dictionary) -> void:
 	_ozellikleri_hesapla()
 	can = deger("can")
 	mana = deger("mana")
+	if is_inside_tree():
+		gorunum_guncelle.call_deferred()
 
 
 func gereken_tecrube() -> int:
@@ -197,6 +205,7 @@ func esya_al(e: Dictionary) -> void:
 	var y: String = e["yuva"]
 	if not esyalar.has(y):
 		_can_oranini_koru(func(): esyalar[y] = e)
+		gorunum_guncelle()
 		esya_alindi.emit(e, "takildi")
 	elif canta.size() < CANTA_MAX:
 		canta.append(e)
@@ -220,6 +229,7 @@ func tak(i: int) -> void:
 		if esyalar.has(y):
 			canta.insert(i, esyalar[y])
 		esyalar[y] = e)
+	gorunum_guncelle()
 
 
 func cikar(y: String) -> bool:
@@ -228,6 +238,7 @@ func cikar(y: String) -> bool:
 	_can_oranini_koru(func():
 		canta.append(esyalar[y])
 		esyalar.erase(y))
+	gorunum_guncelle()
 	return true
 
 
@@ -718,8 +729,12 @@ func _alan_hasari(merkez: Vector3, yaricap: float, carpan: float, itme: float, s
 func hasar_al(miktar: float) -> void:
 	if durum == "olu" or _dokunulmaz > 0:
 		return
-	var azalan := miktar * (1.0 - clampf(deger("zirh"), 0.0, 60.0) / 100.0)
+	if randf() * 100.0 < minf(deger("kacinma"), 50.0):
+		Efekt.hasar_yazisi(global_position + Vector3(0, 2.4, 0), "KAÇTI", Color(0.6, 0.9, 1.0))
+		return
+	var azalan := miktar * (1.0 - zirh_orani() / 100.0)
 	can -= azalan
+	Efekt.hasar_yazisi(global_position + Vector3(0, 2.3, 0), "-%d" % int(azalan), Color(1.0, 0.3, 0.25))
 	_hasar_flas = 1.0
 	Ses.cal("aci", -6.0)
 	if ana:
@@ -991,3 +1006,40 @@ func _kul_kiyameti() -> void:
 	, 1.0)
 	if ana:
 		ana.mesaj_goster("KÜL KIYAMETİ!", Efekt.ATES_ACIK, true)
+
+
+
+# ================================================================== elde görünen silah ve kalkan
+var _el_sag: Node3D
+var _el_sol: Node3D
+
+
+func gorunum_guncelle() -> void:
+	## Takılı silah elinde, (Muhafız için) kalkan sol kolunda görünür.
+	var iskelet: Skeleton3D = model.find_child("Skeleton3D", true, false)
+	if iskelet == null:
+		return
+	var sag := iskelet.find_child("handslot_r", false, false)
+	var sol := iskelet.find_child("handslot_l", false, false)
+	if is_instance_valid(_el_sag):
+		_el_sag.queue_free()
+	if is_instance_valid(_el_sol):
+		_el_sol.queue_free()
+	var silah: Dictionary = esyalar.get("Silah", {})
+	var yeni := Esya.model_olustur(str(silah.get("model", ""))) if silah.get("sinif", "") == sinif else null
+	if yeni == null and bilgi.has("varsayilan"):
+		yeni = Esya.model_olustur(bilgi["varsayilan"])
+	if sag:
+		for c in sag.get_children():
+			if c is MeshInstance3D:
+				c.visible = yeni == null
+		if yeni:
+			sag.add_child(yeni)
+			_el_sag = yeni
+	var kalkan: Dictionary = esyalar.get("Zırh", {})
+	var km := str(kalkan.get("model", ""))
+	if sol and km.begins_with("shield") and kalkan.get("sinif", "") == sinif:
+		var k := Esya.model_olustur(km)
+		if k:
+			sol.add_child(k)
+			_el_sol = k

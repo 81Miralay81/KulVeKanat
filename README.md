@@ -9,13 +9,13 @@ Kanatix yazılım ailesinin bir parçası. Godot 4.6 ile yapıldı; Windows (exe
 
 Oyun her açılışta yeni sürüm olup olmadığına bakar; varsa ana menüde "YENİ SÜRÜMÜ İNDİR" düğmesi çıkar.
 
-## Bu sürümde neler var (0.2)
+## Bu sürümde neler var (0.3)
 
 - **Sınıflar:** Kılıç Muhafızı (yakın dövüş), Gölge Avcı (arbalet, uzaktan), Kül Büyücü (alan büyüleri); her sınıfın ayrı kaydı
 - **Kasaba (Son Sığınak):** demirci (eşya yükseltme), simyacı (iksir), tüccar (gizemli sandıklar)
 - **Sandıklar:** köşelerde, yanına gelince açılır, her 5 dalgada dolar
 - **Kayıt:** kaldığın dalgadan devam; ölünce son kontrol noktasından
-- **Harita:** 1. bölüm, Kül Ovaları - Yıkık Mahzen
+- **Dünya:** açık bölge Kül Ovaları, ortada Son Sığınak köyü (esnaflar), iki zindan (Yıkık Mahzen, Kemik Çukuru)
 - **Düşmanlar:** Kül İskeleti, Kül Haydudu, Kül Muhafızı, Kül Büyücüsü (uzaktan büyü atar), elit düşmanlar,
   her 10. dalgada boss: **Kor Avcısı Garran**
 - **Yetenekler:** Kılıç Darbesi (3'lü kombo), Kor Kasırgası (seviye 1), Kanat Atılımı (seviye 2),
@@ -56,6 +56,6 @@ Oyun kolu (Xbox tipi) da çalışır.
 
 ## Teşekkürler ve lisanslar
 
-- 3B modeller ve animasyonlar: [KayKit](https://kaylousberg.itch.io/) (Kay Lousberg) - Adventurers, Skeletons ve Dungeon Remastered paketleri, **CC0** lisanslı.
+- 3B modeller ve animasyonlar: [KayKit](https://kaylousberg.itch.io/) (Kay Lousberg) - Adventurers, Skeletons, Dungeon Remastered ve Medieval Hexagon paketleri, **CC0** lisanslı.
 - Yazı tipleri: Cinzel ve Rajdhani, **SIL Open Font License** (Google Fonts).
 - Sesler ve müzik bu proje için kodla üretildi (`marka/sesler.py`).

@@ -1,5 +1,6 @@
 extends Node3D
-## Ana sahne: dünya, ışık, kamera, kahraman, dalgalar, arayüz ve menüler.
+## Ana sahne: açık bölge (köy + düşman sürüleri + zindan girişleri), zindanlar (dalgalar + boss),
+## kamera, kahraman, arayüz ve menüler.
 
 var mobil := false
 var dunya: Node3D
@@ -12,23 +13,34 @@ var sinif := "muhafiz"
 var _kayit: Dictionary = {}
 var kasaba: Kasaba
 var _secim_menu: Control
-var _kasaba_teklif_edildi := 0
 var dusmanlar: Array = []       ## her fizik karesinde bir kez güncellenir (hızlı erişim)
 var envanter: Envanter
 var _env: Environment
 var _ay: DirectionalLight3D
 
 var durum := "menu"            ## menu, oyun, olum
-var dalga := 0
-var _sira: Array = []          ## doğacak düşmanlar
+var mod := "bolge"             ## bolge (açık alan + köy) ya da zindan
+var bolge_kok: Node3D
+var zindan_kok: Node3D
+var aktif_zindan: Dictionary = {}
+var temizlenen: Array = []     ## bitirilen zindanlar
+var etkilesim: Dictionary = {} ## yakındaki NPC / zindan kapısı / çıkış
+var dalga := 0                 ## zindanda kaçıncı dalga
+var _seviye_esdeg := 1         ## doğan düşmanların gücü
+var _sira: Array = []          ## zindanda doğacak düşmanlar
 var _dogus_sayac := 0.0
 var _ara_sayac := 0.0
 var _canli := 0
 var _oldurulen := 0
 var _sarsinti := 0.0
 var _kamera_hedef := Vector3.ZERO
-var _duraklat_sure := 0.0
-var _bolum_bitti := false
+var _zindan_bitti := false
+var _suruler: Array = []       ## bölgedeki düşman sürüleri
+var _suru_sayac := 0.0
+var _sandik_sayac := 0.0
+var _cikis: Node3D
+var _gecis: ColorRect
+var _gecis_suruyor := false
 
 var _menu_katman: CanvasLayer
 var _menu: Control
@@ -38,7 +50,7 @@ var _guncelleme_kutu: Control
 var _tema: Theme
 var _baslik_font: Font
 
-const KAMERA_OFSET := Vector3(9.5, 15.0, 9.5)
+const KAMERA_OFSET := Vector3(11.5, 18.0, 11.5)   ## biraz daha geriden bakış
 
 
 func _ready() -> void:
@@ -50,11 +62,33 @@ func _ready() -> void:
 	add_child(dunya)
 	Efekt.kur(dunya, mobil)
 	_ortam()
-	Dunya.insa(dunya, mobil)
+	bolge_kok = Node3D.new()
+	bolge_kok.name = "Bolge"
+	dunya.add_child(bolge_kok)
+	Bolge.insa(bolge_kok, mobil)
+	for e in Bolge.ESNAFLAR:
+		var n := Npc.new()
+		n.veri = e
+		n.position = e["konum"]
+		bolge_kok.add_child(n)
+	seed(77)
+	var sandik_sayisi := 0
+	while sandik_sayisi < 8:
+		var p := Vector3(randf_range(-60, 60), 0, randf_range(-60, 60))
+		if Bolge.bos_mu(p, 8.0):
+			var sk := Sandik.new()
+			sk.ana = self
+			sk.position = p
+			sk.rotation.y = randf() * TAU
+			bolge_kok.add_child(sk)
+			sandik_sayisi += 1
+	randomize()
+	for q in Bolge.suru_noktalari:
+		_suruler.append({"konum": q, "uyeler": [], "bekle": 0.0, "doldu": false})
 
 	kamera = Camera3D.new()
 	kamera.fov = 42.0
-	kamera.far = 120.0
+	kamera.far = 160.0
 	add_child(kamera)
 
 	sinif = Oyun.secili_sinif if Oyun.secili_sinif != "" else str(Oyun.kayit.get("son_sinif", ""))
@@ -67,13 +101,8 @@ func _ready() -> void:
 	_kayit = Oyun.karakter_yukle(sinif)
 	if not _kayit.is_empty():
 		kahraman.kayit_yukle(_kayit)
-	for sd in Dunya.SANDIKLAR:
-		var sk := Sandik.new()
-		sk.ana = self
-		sk.position = sd[0]
-		sk.rotation.y = sd[1]
-		dunya.add_child(sk)
-	kahraman.global_position = Vector3(0, 0, 4)
+		temizlenen = _kayit.get("temizlenen", [])
+	kahraman.global_position = Bolge.DOGUS
 	kahraman.oldu.connect(_kahraman_oldu)
 	kahraman.seviye_atladi.connect(func(s):
 		mesaj_goster("SEVİYE %d" % s, Color(1, 0.85, 0.4), true))
@@ -100,6 +129,7 @@ func _ready() -> void:
 	dokunmatik = Dokunmatik.new()
 	dokunmatik.kahraman = kahraman
 	dokunmatik.hud = hud
+	dokunmatik.ana = self
 	dokunmatik.duraklat_cagri = _duraklat_ac_kapa
 	dokunmatik.envanter_cagri = _envanter_ac
 	dokunmatik.harita_cagri = func(p: Vector2) -> bool: return durum == "oyun" and not _duraklat_menu.visible and not envanter.visible and hud.harita_dokunus(p)
@@ -109,6 +139,11 @@ func _ready() -> void:
 		dokunmatik.visible = durum == "oyun")
 
 	_menuleri_kur()
+	_gecis = ColorRect.new()
+	_gecis.color = Color(0, 0, 0, 0)
+	_gecis.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_gecis.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_menu_katman.add_child(_gecis)
 	_kalite_uygula()
 	get_tree().create_timer(0.3).timeout.connect(func(): Efekt.isinma(kahraman.global_position + Vector3(2, 0, 2)))
 	var g := Guncelleme.new()
@@ -127,16 +162,13 @@ func _ortam() -> void:
 	var env := Environment.new()
 	_env = env
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.02, 0.015, 0.025)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.36, 0.28, 0.27)
-	env.ambient_light_energy = 0.28 if not mobil else 0.6
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_exposure = 1.05
 	env.glow_enabled = true
 	env.glow_intensity = 0.85
 	env.glow_strength = 1.0
-	env.glow_bloom = 0.08
+	env.glow_bloom = 0.06
 	env.glow_hdr_threshold = 0.95
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 	env.set_glow_level(0, 0.0)
@@ -145,27 +177,44 @@ func _ortam() -> void:
 	env.set_glow_level(3, 0.6)
 	env.set_glow_level(4, 0.4)
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.12, 0.08, 0.1)
-	env.fog_density = 0.012
 	env.adjustment_enabled = true
 	env.adjustment_contrast = 1.08
-	env.adjustment_saturation = 1.12
+	env.adjustment_saturation = 1.1
 	if not mobil:
 		env.ssao_enabled = true
-		env.ssao_intensity = 1.6
+		env.ssao_intensity = 1.4
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
-
 	var ay := DirectionalLight3D.new()
 	_ay = ay
-	ay.light_color = Color(0.58, 0.64, 0.95)
-	ay.light_energy = 0.42
-	ay.rotation_degrees = Vector3(-55, -30, 0)
 	ay.shadow_enabled = true
-	ay.directional_shadow_max_distance = 40.0
+	ay.directional_shadow_max_distance = 45.0
 	ay.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL if mobil else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	add_child(ay)
+	_ortam_ayarla()
+
+
+func _ortam_ayarla() -> void:
+	## Açık alanda gün batımı ışığı (kül ve kor tonları), zindanda karanlık.
+	if mod == "bolge":
+		_env.background_color = Color(0.42, 0.38, 0.4)
+		_env.ambient_light_color = Color(0.52, 0.52, 0.58)
+		_env.ambient_light_energy = 0.42 if not mobil else 0.6
+		_env.fog_light_color = Color(0.4, 0.36, 0.38)
+		_env.fog_density = 0.006
+		_ay.light_color = Color(1.0, 0.9, 0.8)
+		_ay.light_energy = 0.85
+		_ay.rotation_degrees = Vector3(-50, -40, 0)
+	else:
+		_env.background_color = Color(0.02, 0.015, 0.025)
+		_env.ambient_light_color = Color(0.36, 0.28, 0.27)
+		_env.ambient_light_energy = 0.28 if not mobil else 0.6
+		_env.fog_light_color = Color(0.12, 0.08, 0.1)
+		_env.fog_density = 0.012
+		_ay.light_color = Color(0.58, 0.64, 0.95)
+		_ay.light_energy = 0.42
+		_ay.rotation_degrees = Vector3(-55, -30, 0)
 
 
 # ------------------------------------------------------------------ döngü
@@ -177,7 +226,11 @@ func _process(dt: float) -> void:
 	_kamera_guncelle(dt)
 	if durum != "oyun" or get_tree().paused:
 		return
-	_dalga_isle(dt)
+	if mod == "bolge":
+		_bolge_isle(dt)
+	else:
+		_dalga_isle(dt)
+	_etkilesim_bul()
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -185,7 +238,10 @@ func _unhandled_input(e: InputEvent) -> void:
 		return
 	if e.is_action_pressed("fps"):
 		Oyun.fps_goster = not Oyun.fps_goster
-	if e.is_action_pressed("envanter") and not _duraklat_menu.visible and not hud.buyuk_harita and not envanter.visible:
+	if e.is_action_pressed("etkilesim") and not get_tree().paused:
+		etkilesim_yap()
+		get_viewport().set_input_as_handled()
+	elif e.is_action_pressed("envanter") and not _duraklat_menu.visible and not hud.buyuk_harita and not envanter.visible:
 		_envanter_ac()
 		get_viewport().set_input_as_handled()
 	elif e.is_action_pressed("harita") and not _duraklat_menu.visible and not envanter.visible:
@@ -200,15 +256,18 @@ func _unhandled_input(e: InputEvent) -> void:
 
 
 func _input(e: InputEvent) -> void:
-	# Farenin küçük haritaya tıklaması (dokunmatik olanları Dokunmatik ayrıca ele alır)
+	# Farenin küçük haritaya / çantaya / etkileşim yazısına tıklaması
 	if durum == "oyun" and e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT \
 			and e.device != InputEvent.DEVICE_ID_EMULATION and not _duraklat_menu.visible:
-		if envanter.visible:
+		if envanter.visible or kasaba.visible:
 			return
 		if hud.harita_dokunus(e.position):
 			get_viewport().set_input_as_handled()
 		elif not hud.mobil_duzen and not hud.buyuk_harita and hud.canta_alani().has_point(e.position):
 			_envanter_ac()
+			get_viewport().set_input_as_handled()
+		elif not etkilesim.is_empty() and hud.etkilesim_alani().has_point(e.position):
+			etkilesim_yap()
 			get_viewport().set_input_as_handled()
 
 
@@ -218,9 +277,11 @@ func _kamera_guncelle(dt: float) -> void:
 	_kamera_hedef = _kamera_hedef.lerp(kahraman.global_position, minf(1.0, dt * 6.0))
 	_sarsinti = maxf(0.0, _sarsinti - dt * 2.5)
 	var s := Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * _sarsinti * _sarsinti * 0.5
-	var ofset := KAMERA_OFSET * (0.9 if Oyun.dokunmatik_acik else 1.0)
-	kamera.global_position = _kamera_hedef + ofset + s
+	kamera.global_position = _kamera_hedef + KAMERA_OFSET + s
 	kamera.look_at(_kamera_hedef + Vector3(0, 0.8, 0) + s * 0.5, Vector3.UP)
+	var kul: Node3D = bolge_kok.get_node_or_null("Kul") if bolge_kok else null
+	if kul and mod == "bolge":
+		kul.global_position = kahraman.global_position + Vector3(0, 3, 0)
 
 
 func kamera_sars(guc: float) -> void:
@@ -228,7 +289,6 @@ func kamera_sars(guc: float) -> void:
 
 
 func vurus_duraklat(sure: float) -> void:
-	# Güçlü vuruşta oyun bir anlığına yavaşlar: darbe hissi
 	if Engine.time_scale < 1.0:
 		return
 	Engine.time_scale = 0.06
@@ -240,53 +300,242 @@ func mesaj_goster(metin: String, renk := Color.WHITE, buyuk := false) -> void:
 		hud.mesaj(metin, renk, buyuk)
 
 
-# ------------------------------------------------------------------ dalgalar
+func koyde_mi() -> bool:
+	return mod == "bolge" and kahraman.global_position.distance_to(Bolge.KOY) < Bolge.KOY_YARICAP + 1.5
+
+
+func sinir() -> float:
+	return 18.5 if mod == "zindan" else Bolge.YARI - 1.0
+
+
+# ------------------------------------------------------------------ üst yazılar
 func dalga_metni() -> String:
 	if durum != "oyun":
 		return ""
-	if _bolum_bitti and _sira.is_empty() and _canli == 0 and _ara_sayac > 0:
-		return "BÖLÜM 1 TAMAMLANDI"
-	if dalga == 0 or (_ara_sayac > 0 and _canli == 0 and _sira.is_empty()):
-		return "DALGA %d" % (dalga + 1) if _ara_sayac > 0 else ""
-	return "DALGA %d" % dalga
+	if mod == "bolge":
+		return "SON SIĞINAK" if koyde_mi() else "KÜL OVALARI"
+	if _zindan_bitti:
+		return "%s TEMİZLENDİ" % str(aktif_zindan["ad"]).to_upper()
+	if boss != null and is_instance_valid(boss):
+		return str(aktif_zindan["ad"]).to_upper() + " · BOSS"
+	return "%s · DALGA %d/%d" % [str(aktif_zindan["ad"]).to_upper(), maxi(1, dalga), int(aktif_zindan["dalga"])]
 
 
 func alt_metin() -> String:
 	if durum != "oyun":
 		return ""
+	if mod == "bolge":
+		if koyde_mi():
+			return "Güvendesin · esnaflarla konuş, altınını harca"
+		return "Zindanlar haritada (M) · köy ortada"
+	if _zindan_bitti:
+		return "Ortadaki kapıdan köye dönebilirsin"
 	if _ara_sayac > 0 and _canli == 0 and _sira.is_empty():
 		return "%d saniye içinde başlıyor" % int(ceil(_ara_sayac))
 	return "Kalan düşman: %d" % (_canli + _sira.size())
 
 
-func _dalga_isle(dt: float) -> void:
+# ------------------------------------------------------------------ açık bölge: düşman sürüleri
+func _bolge_isle(dt: float) -> void:
+	_suru_sayac -= dt
+	_sandik_sayac += dt
+	if _sandik_sayac > 240.0:
+		_sandik_sayac = 0.0
+		for sk in get_tree().get_nodes_in_group("sandik"):
+			sk.doldur()
+	if _suru_sayac > 0:
+		return
+	_suru_sayac = 0.5
+	var k := kahraman.global_position
+	var en_fazla := 4 if mobil else 6
+	var aktif := 0
+	for s in _suruler:
+		s["uyeler"] = s["uyeler"].filter(func(d): return is_instance_valid(d) and not d.olu)
+		if not s["uyeler"].is_empty():
+			aktif += 1
+	for s in _suruler:
+		s["bekle"] = maxf(0.0, s["bekle"] - 0.5)
+		var m: float = k.distance_to(s["konum"])
+		if s["uyeler"].is_empty():
+			if s["doldu"]:
+				s["doldu"] = false
+				s["bekle"] = 70.0       # temizlenen sürü bir süre sonra yeniden gelir
+			elif s["bekle"] <= 0 and m < 42.0 and m > 16.0 and aktif < en_fazla:
+				_suru_dogur(s)
+				aktif += 1
+		elif m > 62.0:
+			for d in s["uyeler"]:          # çok uzaktaki sürü kaybolur (telefon yorulmasın)
+				d.queue_free()
+			s["uyeler"].clear()
+			_canli = 0
+
+
+func _suru_dogur(s: Dictionary) -> void:
+	var p: Vector3 = s["konum"]
+	var sev := maxi(1, kahraman.seviye - 1 + int((p.length() - 25.0) / 16.0))
+	var adet := randi_range(3, 4) if mobil else randi_range(3, 6)
+	for i in adet:
+		var r := randf()
+		var t := "minyon"
+		if sev >= 2 and r < 0.25:
+			t = "haydut"
+		elif sev >= 3 and r > 0.8:
+			t = "savasci"
+		elif sev >= 4 and r > 0.62:
+			t = "buyucu"
+		var elit := i == 0 and randf() < 0.15
+		var d := Dusman.new()
+		d.kur(t, sev, elit)
+		d.kahraman = kahraman
+		d.ana = self
+		d.aggro = false
+		var a := TAU * i / adet
+		d.position = p + Vector3(cos(a), 0, sin(a)) * randf_range(1.5, 3.5)
+		dunya.add_child(d)
+		d.oldu_sinyal.connect(_dusman_oldu)
+		s["uyeler"].append(d)
+	s["doldu"] = true
+
+
+# ------------------------------------------------------------------ etkileşim (NPC, zindan kapısı, çıkış)
+func _etkilesim_bul() -> void:
+	etkilesim = {}
 	if kahraman.durum == "olu":
+		return
+	var k := kahraman.global_position
+	if mod == "bolge":
+		for n in get_tree().get_nodes_in_group("npc"):
+			if n.global_position.distance_to(k) < 3.2:
+				etkilesim = {"tur": "npc", "ad": "%s ile konuş" % n.veri["ad"], "veri": n.veri["id"]}
+				return
+		for zd in Bolge.ZINDANLAR:
+			if Bolge.giris_noktasi(zd).distance_to(k) < 4.5:
+				var bitti := " (temizlendi)" if zd["id"] in temizlenen else ""
+				etkilesim = {"tur": "zindan", "ad": "%s'e gir · Seviye %d+%s" % [zd["ad"], zd["seviye"], bitti], "veri": zd}
+				return
+	elif _cikis and is_instance_valid(_cikis) and _cikis.global_position.distance_to(k) < 3.0:
+		etkilesim = {"tur": "cikis", "ad": "Köye dön", "veri": null}
+
+
+func etkilesim_yap() -> void:
+	if etkilesim.is_empty() or _gecis_suruyor:
+		return
+	match etkilesim["tur"]:
+		"npc":
+			_kasaba_ac(etkilesim["veri"])
+		"zindan":
+			var zd: Dictionary = etkilesim["veri"]
+			_gecis_yap(func(): _zindana_gir(zd))
+		"cikis":
+			_gecis_yap(func(): _zindandan_cik(false))
+
+
+func _gecis_yap(islem: Callable) -> void:
+	_gecis_suruyor = true
+	Oyun.tum_girdileri_birak()
+	var tw := create_tween()
+	tw.tween_property(_gecis, "color:a", 1.0, 0.3)
+	tw.tween_callback(islem)
+	tw.tween_interval(0.15)
+	tw.tween_property(_gecis, "color:a", 0.0, 0.4)
+	tw.tween_callback(func(): _gecis_suruyor = false)
+
+
+func _yerdekileri_topla() -> void:
+	for g in get_tree().get_nodes_in_group("ganimet"):
+		if g.tur == "esya":
+			kahraman.esya_al(g.esya)
+		g.queue_free()
+
+
+func _zindana_gir(zd: Dictionary) -> void:
+	for d in get_tree().get_nodes_in_group("dusman"):
+		d.queue_free()
+	for s in _suruler:
+		s["uyeler"].clear()
+		s["doldu"] = false
+	_yerdekileri_topla()
+	dunya.remove_child(bolge_kok)
+	zindan_kok = Node3D.new()
+	zindan_kok.name = "Zindan"
+	dunya.add_child(zindan_kok)
+	Dunya.insa(zindan_kok, mobil)
+	for sd in Dunya.SANDIKLAR:
+		var sk := Sandik.new()
+		sk.ana = self
+		sk.position = sd[0]
+		sk.rotation.y = sd[1]
+		zindan_kok.add_child(sk)
+	mod = "zindan"
+	aktif_zindan = zd
+	_ortam_ayarla()
+	dalga = 0
+	_sira.clear()
+	_canli = 0
+	_zindan_bitti = false
+	_ara_sayac = 2.5
+	boss = null
+	kahraman.global_position = Vector3(0, 0, 4)
+	_kamera_hedef = kahraman.global_position
+	mesaj_goster(zd["ad"], Color(1, 0.75, 0.4), true)
+	kaydet()
+
+
+func _zindandan_cik(koye: bool) -> void:
+	for d in get_tree().get_nodes_in_group("dusman"):
+		d.queue_free()
+	_yerdekileri_topla()
+	if zindan_kok:
+		zindan_kok.queue_free()
+		zindan_kok = null
+	_cikis = null
+	boss = null
+	_sira.clear()
+	_canli = 0
+	if bolge_kok.get_parent() == null:
+		dunya.add_child(bolge_kok)
+	var zd := aktif_zindan
+	mod = "bolge"
+	_ortam_ayarla()
+	kahraman.global_position = Bolge.DOGUS if koye or zd.is_empty() else Bolge.giris_noktasi(zd)
+	_kamera_hedef = kahraman.global_position
+	for sk in get_tree().get_nodes_in_group("sandik"):
+		sk.doldur()
+	aktif_zindan = {}
+	mesaj_goster("Kül Ovaları", Color(0.95, 0.8, 0.55), true)
+	kaydet()
+
+
+func koye_don() -> void:
+	if mod == "zindan":
+		_gecis_yap(func(): _zindandan_cik(true))
+	else:
+		_gecis_yap(func():
+			kahraman.global_position = Bolge.DOGUS
+			_kamera_hedef = kahraman.global_position)
+
+
+# ------------------------------------------------------------------ zindan: dalgalar ve boss
+func _dalga_isle(dt: float) -> void:
+	if kahraman.durum == "olu" or _zindan_bitti:
 		return
 	if _sira.is_empty() and _canli == 0:
 		if _ara_sayac <= 0:
-			_ara_sayac = 4.0 if dalga > 0 else 2.5
+			_ara_sayac = 3.5 if dalga > 0 else 2.5
 		_ara_sayac -= dt
-		if dalga > 0 and dalga % 5 == 0 and _kasaba_teklif_edildi != dalga:
-			_kasaba_teklif_edildi = dalga
-			mesaj_goster("Son Sığınak'a uğrayabilirsin: altınını harca", Color(1, 0.8, 0.4))
-			_kasaba_ac()
-			return
 		if _ara_sayac <= 0:
 			_ara_sayac = 0
 			dalga += 1
+			_seviye_esdeg = maxi(int(aktif_zindan["seviye"]), kahraman.seviye) + dalga - 1
 			_sira = _dalga_listesi(dalga)
-			kaydet(dalga)
-			if dalga % 5 == 1 and dalga > 1:
-				for sk in get_tree().get_nodes_in_group("sandik"):
-					sk.doldur()
-				mesaj_goster("Sandıklar yeniden doldu", Efekt.ALTIN)
-			mesaj_goster("DALGA %d" % dalga, Color(0.95, 0.8, 0.5), true)
-			if dalga % 10 == 0:
-				mesaj_goster("Kor Avcısı Garran geliyor!", Color(1, 0.4, 0.15), false)
+			if dalga > int(aktif_zindan["dalga"]):
+				mesaj_goster("%s geliyor!" % Dusman.TURLER[aktif_zindan["boss"]]["ad"], Color(1, 0.4, 0.15), true)
+			else:
+				mesaj_goster("DALGA %d/%d" % [dalga, int(aktif_zindan["dalga"])], Color(0.95, 0.8, 0.5), true)
 		return
 	_dogus_sayac -= dt
-	var sinir := 16 if mobil else 30
-	if _dogus_sayac <= 0 and not _sira.is_empty() and _canli < sinir:
+	var sinir_s := 16 if mobil else 30
+	if _dogus_sayac <= 0 and not _sira.is_empty() and _canli < sinir_s:
 		_dogus_sayac = 0.35
 		var s: Array = _sira.pop_front()
 		_dogur(s[0], s[1])
@@ -294,31 +543,29 @@ func _dalga_isle(dt: float) -> void:
 
 func _dalga_listesi(n: int) -> Array:
 	var liste := []
-	var sayi := mini(6 + n * 3, 30)
-	if n % 10 == 0:
-		sayi = 8
+	var son := n > int(aktif_zindan["dalga"])
+	var sayi := mini(6 + n * 3, 24) if not son else 6
+	var sev := _seviye_esdeg
 	for i in sayi:
 		var r := randf()
 		var t := "minyon"
-		if n >= 2 and r < 0.25:
+		if sev >= 2 and r < 0.25:
 			t = "haydut"
-		elif n >= 3 and r > 0.82:
+		elif sev >= 3 and r > 0.82:
 			t = "savasci"
-		elif n >= 4 and r > 0.66:
+		elif (sev >= 4 or aktif_zindan["boss"] == "vezra") and r > 0.66:
 			t = "buyucu"
 		liste.append([t, false])
-	if n % 3 == 0:
+	if n % 2 == 0:
 		liste.append(["savasci", true])
-	if n >= 5 and n % 5 == 0:
-		liste.append([["haydut", "buyucu"].pick_random(), true])
-	if n % 10 == 0:
-		liste.insert(3, ["garran", false])
+	if son:
+		liste.insert(2, [aktif_zindan["boss"], false])
 	return liste
 
 
 func _dogur(tur: String, elit: bool) -> void:
 	var d := Dusman.new()
-	d.kur(tur, dalga, elit)
+	d.kur(tur, _seviye_esdeg, elit)
 	d.kahraman = kahraman
 	d.ana = self
 	var p := Vector3.ZERO
@@ -334,7 +581,7 @@ func _dogur(tur: String, elit: bool) -> void:
 	dunya.add_child(d)
 	_canli += 1
 	d.oldu_sinyal.connect(_dusman_oldu)
-	if tur == "garran":
+	if Dusman.TURLER[tur].get("boss", false):
 		boss = d
 		kamera_sars(0.6)
 
@@ -342,41 +589,72 @@ func _dogur(tur: String, elit: bool) -> void:
 func boss_cagirisi(merkez: Vector3) -> void:
 	for i in 4:
 		var d := Dusman.new()
-		d.kur("minyon", dalga)
+		d.kur("minyon", _seviye_esdeg)
 		d.kahraman = kahraman
 		d.ana = self
 		var a := TAU * i / 4.0
 		d.position = merkez + Vector3(cos(a), 0, sin(a)) * 3.0
-		d.position.x = clampf(d.position.x, -18, 18)
-		d.position.z = clampf(d.position.z, -18, 18)
+		var lim := sinir() - 0.5
+		d.position.x = clampf(d.position.x, -lim, lim)
+		d.position.z = clampf(d.position.z, -lim, lim)
 		dunya.add_child(d)
 		_canli += 1
 		d.oldu_sinyal.connect(_dusman_oldu)
 
 
+func _zindan_tamam(p: Vector3) -> void:
+	_zindan_bitti = true
+	if not aktif_zindan["id"] in temizlenen:
+		temizlenen.append(aktif_zindan["id"])
+	mesaj_goster("%s TEMİZLENDİ!" % str(aktif_zindan["ad"]).to_upper(), Color(1, 0.6, 0.2), true)
+	# ortada çıkış kapısı
+	_cikis = Node3D.new()
+	dunya.add_child(_cikis)
+	_cikis.global_position = Vector3(0, 0, 0)
+	var h := MeshInstance3D.new()
+	h.mesh = Efekt.halka_mesh(1.6, 2.4)
+	h.material_override = Efekt.parlak_mat(Color(0.4, 0.8, 1.0), 2.5)
+	h.position.y = 0.06
+	_cikis.add_child(h)
+	_cikis.add_child(Efekt.isik_sutunu(Vector3.ZERO, Color(0.4, 0.8, 1.0), 6.0, 1.4, -1, 1.6))
+	var l := Label3D.new()
+	l.text = "KÖYE DÖNÜŞ KAPISI"
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.font_size = 56
+	l.pixel_size = 0.008
+	l.outline_size = 14
+	l.modulate = Color(0.6, 0.9, 1.0)
+	l.position.y = 3.2
+	_cikis.add_child(l)
+	kaydet()
+
+
 func _dusman_oldu(d: Dusman) -> void:
-	_canli = max(0, _canli - 1)
+	if mod == "zindan":
+		_canli = max(0, _canli - 1)
 	_oldurulen += 1
 	hud.oldurme()
 	kahraman.tecrube_ekle(d.xp)
 	kahraman.ofke = minf(100.0, kahraman.ofke + (3.0 if not d.boss else 50.0))
 	var p := d.global_position
 	if d.boss:
-		_bolum_bitti = true
-		mesaj_goster("KOR AVCISI GARRAN YENİLDİ!", Color(1, 0.6, 0.2), true)
+		mesaj_goster("%s YENİLDİ!" % d.ad.to_upper(), Color(1, 0.6, 0.2), true)
 		for i in 4:
 			_ganimet("esya", p + Vector3(randf_range(-2, 2), 0, randf_range(-2, 2)), 0, 3 if i == 0 else 2)
-		altin_ver(6 * (20 + dalga * 4), p)
+		altin_ver(6 * (20 + _seviye_esdeg * 4), p)
 		kamera_sars(1.0)
 		Efekt.kanat_tuyu_patlamasi(p)
 		boss = null
+		if mod == "zindan":
+			_zindan_tamam(p)
 		return
+	var sev := d.xp / 12
 	if d.elit:
 		_ganimet("esya", p, 0, 1)
-	elif randf() < 0.07:
+	elif randf() < 0.08:
 		_ganimet("esya", p, 0, 0)
 	if randf() < 0.5:
-		altin_ver(3 + dalga * 2 + randi() % 4, p)
+		altin_ver(3 + sev * 2 + randi() % 4, p)
 	if randf() < 0.04:
 		_ganimet("iksir", p, 0)
 
@@ -385,7 +663,6 @@ func _ganimet(tur: String, p: Vector3, miktar := 0, en_az := 0) -> void:
 	if tur == "altin":
 		altin_ver(miktar, p)
 		return
-	# yerde en fazla 15 eşya: fazlası en eskisinden başlayarak çantaya gider
 	var yerdekiler := get_tree().get_nodes_in_group("ganimet")
 	if yerdekiler.size() >= 15:
 		var eski: Node = yerdekiler[0]
@@ -397,9 +674,10 @@ func _ganimet(tur: String, p: Vector3, miktar := 0, en_az := 0) -> void:
 	g.miktar = miktar
 	g.kahraman = kahraman
 	if tur == "esya":
-		g.esya = Esya.uret(kahraman.seviye + dalga / 3, en_az)
-	p.x = clampf(p.x, -18.5, 18.5)
-	p.z = clampf(p.z, -18.5, 18.5)
+		g.esya = Esya.uret(maxi(kahraman.seviye, _seviye_esdeg), en_az, sinif)
+	var lim := sinir()
+	p.x = clampf(p.x, -lim, lim)
+	p.z = clampf(p.z, -lim, lim)
 	g.position = p
 	dunya.add_child(g)
 
@@ -407,12 +685,29 @@ func _ganimet(tur: String, p: Vector3, miktar := 0, en_az := 0) -> void:
 func _kahraman_oldu() -> void:
 	durum = "olum"
 	Oyun.kayit_guncelle(dalga, kahraman.seviye)
-	kaydet(_kontrol_noktasi(dalga))
+	kahraman.altin = int(kahraman.altin * 0.9)
+	kaydet()
 	dokunmatik.visible = false
 	Oyun.tum_girdileri_birak()
 	get_tree().create_timer(1.6).timeout.connect(func():
 		_olum_menu_guncelle()
 		_olum_menu.visible = true)
+
+
+func _koyde_diril() -> void:
+	_olum_menu.visible = false
+	_gecis_yap(func():
+		if mod == "zindan":
+			_zindandan_cik(true)
+		else:
+			for d in get_tree().get_nodes_in_group("dusman"):
+				d.aggro = false
+			kahraman.global_position = Bolge.DOGUS
+			_kamera_hedef = kahraman.global_position
+		kahraman.dirilt()
+		durum = "oyun"
+		hud.visible = true
+		dokunmatik.visible = Oyun.dokunmatik_acik)
 
 
 # ------------------------------------------------------------------ menüler
@@ -596,9 +891,9 @@ func _menuleri_kur() -> void:
 		_dugme("ENVANTER", func():
 			_duraklat_ac_kapa()
 			_envanter_ac()),
-		_dugme("SON SIĞINAK", func():
+		_dugme("KÖYE DÖN", func():
 			_duraklat_ac_kapa()
-			_kasaba_ac()),
+			koye_don()),
 		_kalite_dugmesi(),
 		_dugme("KARAKTER DEĞİŞTİR", func(): _yeniden(false)),
 		_dugme("ANA MENÜ", func(): _yeniden(false)),
@@ -614,7 +909,7 @@ func _menuleri_kur() -> void:
 	var ozet := _yazi_etiket("", 24)
 	ozet.name = "Ozet"
 	v.add_child(ozet)
-	v.add_child(_dugme("TEKRAR DENE", func(): _yeniden(true)))
+	v.add_child(_dugme("KÖYDE DİRİL", _koyde_diril))
 	v.add_child(_dugme("ANA MENÜ", func(): _yeniden(false)))
 
 
@@ -632,13 +927,9 @@ func _basla() -> void:
 	hud.mobil_duzen = Oyun.dokunmatik_acik
 	dokunmatik.visible = Oyun.dokunmatik_acik
 	Ses.muzik_baslat()
-	dalga = maxi(0, int(_kayit.get("dalga", 1)) - 1)
-	_kasaba_teklif_edildi = dalga
-	_ara_sayac = 2.5
-	mesaj_goster("Kül Ovaları · Yıkık Mahzen", Color(0.95, 0.8, 0.55), true)
-	if dalga > 0:
-		mesaj_goster("Kaldığın yerden: Dalga %d" % (dalga + 1), Color(1, 0.85, 0.5))
-	kaydet(dalga + 1)
+	mesaj_goster("Son Sığınak", Color(0.95, 0.8, 0.55), true)
+	mesaj_goster("Esnaflarla konuş, sonra zindanlara git (harita: M / sağ üst)", Color(1, 0.85, 0.5))
+	kaydet()
 
 
 func _duraklat_ac_kapa() -> void:
@@ -654,14 +945,14 @@ func _duraklat_ac_kapa() -> void:
 	Oyun.tum_girdileri_birak()
 	if p:
 		var l: Label = _duraklat_menu.find_child("Esyalar", true, false)
-		var satirlar := ["%s  ·  Seviye %d  ·  Dalga %d  ·  %d altın  ·  FPS %d" % [Sinif.VERI[sinif]["ad"], kahraman.seviye, dalga, kahraman.altin, Engine.get_frames_per_second()],
-			"Hasar %d  ·  Can %d  ·  Kritik %%%d  ·  Zırh %%%d  ·  Ayrıntılar için ENVANTER" % [int(kahraman.deger("hasar")), int(kahraman.deger("can")), int(kahraman.deger("kritik")), int(kahraman.deger("zirh"))]]
+		var satirlar := ["%s  ·  Seviye %d  ·  %d altın  ·  Zindan: %d/%d  ·  FPS %d" % [Sinif.VERI[sinif]["ad"], kahraman.seviye, kahraman.altin, temizlenen.size(), Bolge.ZINDANLAR.size(), Engine.get_frames_per_second()],
+			"Hasar %d  ·  Can %d  ·  Kritik %%%d  ·  Zırh %%%d  ·  Kaçınma %%%d" % [int(kahraman.deger("hasar")), int(kahraman.deger("can")), int(kahraman.deger("kritik")), int(kahraman.zirh_orani()), int(kahraman.deger("kacinma"))]]
 		l.text = "\n".join(satirlar)
 
 
 func _olum_menu_guncelle() -> void:
 	var l: Label = _olum_menu.find_child("Ozet", true, false)
-	l.text = "Dalga %d  ·  Seviye %d  ·  %d düşman  ·  %d altın\nSeviyen, eşyaların ve altının korundu. Dalga %d'den devam edeceksin." % [dalga, kahraman.seviye, _oldurulen, kahraman.altin, _kontrol_noktasi(dalga)]
+	l.text = "Seviye %d  ·  %d düşman  ·  %d altın\nSeviyen ve eşyaların korundu (altının %%10'u düştü). Köyde dirileceksin." % [kahraman.seviye, _oldurulen, kahraman.altin]
 
 
 func _yeniden(hemen: bool) -> void:
@@ -750,11 +1041,11 @@ func _kalite_uygula() -> void:
 
 
 # ------------------------------------------------------------------ kayıt
-func kaydet(dalga_baslangic := -1) -> void:
+func kaydet(_eski := -1) -> void:
 	if kahraman == null:
 		return
 	var v := kahraman.kayit_verisi()
-	v["dalga"] = dalga_baslangic if dalga_baslangic > 0 else maxi(1, dalga)
+	v["temizlenen"] = temizlenen
 	v["surum"] = Oyun.SURUM
 	Oyun.karakter_kaydet(v)
 	_kayit = v
@@ -773,14 +1064,14 @@ static func _kontrol_noktasi(d: int) -> int:
 
 
 # ------------------------------------------------------------------ kasaba
-func _kasaba_ac() -> void:
+func _kasaba_ac(esnaf := "") -> void:
 	if durum != "oyun":
 		return
 	Oyun.tum_girdileri_birak()
 	get_tree().paused = true
 	dokunmatik.visible = false
 	hud.visible = false
-	kasaba.ac()
+	kasaba.ac(esnaf)
 
 
 # ------------------------------------------------------------------ karakter seçimi
@@ -846,14 +1137,15 @@ func _sinif_karti(s: String) -> Control:
 	ac.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ac.custom_minimum_size = Vector2(260, 0)
 	v.add_child(ac)
-	var puan := HBoxContainer.new()
-	puan.alignment = BoxContainer.ALIGNMENT_CENTER
-	puan.add_theme_constant_override("separation", 14)
-	for i in 3:
-		puan.add_child(_yazi_etiket("%s %s" % [["Güç", "Hız", "Büyü"][i], "●".repeat(b["puan"][i]) + "○".repeat(5 - b["puan"][i])], 15, Color(0.95, 0.8, 0.55)))
+	var puan := GridContainer.new()
+	puan.columns = 2
+	puan.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	puan.add_theme_constant_override("h_separation", 16)
+	for i in 4:
+		puan.add_child(_yazi_etiket("%s %s" % [["Güç", "Hız", "Büyü", "Savunma"][i], "●".repeat(b["puan"][i]) + "○".repeat(5 - b["puan"][i])], 14, Color(0.95, 0.8, 0.55)))
 	v.add_child(puan)
 	var k := Oyun.karakter_yukle(s)
-	var bilgi := "Kayıt yok: yeni karakter" if k.is_empty() else "Kayıt: Seviye %d  ·  Dalga %d" % [int(k.get("seviye", 1)), int(k.get("dalga", 1))]
+	var bilgi := "Kayıt yok: yeni karakter" if k.is_empty() else "Kayıt: Seviye %d  ·  Zindan %d/%d" % [int(k.get("seviye", 1)), k.get("temizlenen", []).size(), Bolge.ZINDANLAR.size()]
 	v.add_child(_yazi_etiket(bilgi, 17, Color(1, 0.85, 0.5) if not k.is_empty() else Color(0.7, 0.68, 0.62)))
 	var oyna := _dugme("DEVAM ET" if not k.is_empty() else "OYNA", func():
 		if s == sinif:

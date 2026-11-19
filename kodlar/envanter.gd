@@ -217,9 +217,9 @@ func yenile() -> void:
 			var st := _kutu_stili(Color(0.3, 0.28, 0.26), false)
 			b.add_theme_stylebox_override("disabled", st)
 		_canta_izgara.add_child(b)
-	_ozellikler.text = "\nSeviye %d\nHasar: %d\nCan: %d\nMana: %d\nKritik: %%%.1f\nHız: +%%%.1f\nZırh: %%%.1f\nÇanta: %d / %d" % [
+	_ozellikler.text = "\nSeviye %d\nHasar: %d\nCan: %d\nMana: %d\nKritik: %%%.1f\nHız: +%%%.1f\nZırh: %%%.1f\nKaçınma: %%%.1f\nÇanta: %d / %d" % [
 		kahraman.seviye, int(kahraman.deger("hasar")), int(kahraman.deger("can")), int(kahraman.deger("mana")),
-		kahraman.deger("kritik"), kahraman.deger("hiz"), kahraman.deger("zirh"), kahraman.canta.size(), Kahraman.CANTA_MAX]
+		kahraman.deger("kritik"), kahraman.deger("hiz"), kahraman.zirh_orani(), kahraman.deger("kacinma"), kahraman.canta.size(), Kahraman.CANTA_MAX]
 	_ayrinti_yaz()
 
 
