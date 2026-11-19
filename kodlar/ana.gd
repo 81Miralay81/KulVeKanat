@@ -250,11 +250,17 @@ func _ortam_ayarla() -> void:
 	## Açık alanda bölgenin gökyüzü ve güneşi, zindanda karanlık.
 	if mod == "bolge":
 		var v: Dictionary = Bolge.veri
-		var sm: ProceduralSkyMaterial = _env.sky.sky_material
-		sm.sky_top_color = v["gok"][0]
-		sm.sky_horizon_color = v["gok"][1]
-		sm.ground_horizon_color = v["gok"][1]
-		sm.ground_bottom_color = v["gok"][1].darkened(0.4)
+		if v["id"] == "kul":
+			var pm := PanoramaSkyMaterial.new()
+			pm.panorama = load("res://assets/ph/autumn_field_puresky_1k.hdr")
+			_env.sky.sky_material = pm
+		else:
+			var sm := ProceduralSkyMaterial.new()
+			sm.sky_top_color = v["gok"][0]
+			sm.sky_horizon_color = v["gok"][1]
+			sm.ground_horizon_color = v["gok"][1]
+			sm.ground_bottom_color = v["gok"][1].darkened(0.4)
+			_env.sky.sky_material = sm
 		_env.background_mode = Environment.BG_SKY
 		_env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 		_env.ambient_light_energy = 0.75 if not mobil else 0.95

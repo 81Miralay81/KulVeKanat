@@ -14,8 +14,8 @@ const BOLGELER := [
 		"id": "kul", "ad": "Kül Ovaları", "sehir": "Son Sığınak", "min": 1, "max": 20, "tema": 0, "tohum": 7,
 		"gok": [Color(0.36, 0.52, 0.76), Color(0.8, 0.79, 0.76)], "sis": Color(0.72, 0.74, 0.78), "gunes": Color(1.0, 0.94, 0.84),
 		"cimen": [Color(0.28, 0.31, 0.14), Color(0.56, 0.62, 0.3)], "cimen_yogun": 1.0,
-		"agac": {"yaprakli": true, "ton": Color(0.95, 1.0, 0.9), "kar": 0.0, "sayi": 520}, "kaya": Color(0.85, 0.82, 0.78),
-		"duvar": ["tugla.jpg", "tugla_nrm.jpg", Color(0.95, 0.9, 0.85)],
+		"agac": {"yaprakli": true, "ton": Color(0.95, 1.0, 0.9), "kar": 0.0, "sayi": 520, "ph": [["island_tree_02", 2.4, 3.2], ["dead_tree_trunk", 1.2, 1.6]]}, "kaya": Color(0.85, 0.82, 0.78),
+		"duvar": ["res://assets/ph/castle_brick_07_Diffuse.jpg", "res://assets/ph/castle_brick_07_nor_gl.jpg", Color(1, 1, 1)],
 		"esnaf": ["Demirci Haldun", "Simyacı Nevra", "Tüccar Kerem", "Yol Bekçisi Orhun", "Muhtar Selim"],
 		"dusman": ["minyon", "haydut", "savasci", "buyucu"], "renk": Color(1, 1, 1),
 		"zindanlar": [
@@ -27,8 +27,8 @@ const BOLGELER := [
 	{
 		"id": "ayaz", "ad": "Ayaz Dağları", "sehir": "Buzkale", "min": 20, "max": 40, "tema": 1, "tohum": 23,
 		"gok": [Color(0.42, 0.56, 0.78), Color(0.86, 0.89, 0.93)], "sis": Color(0.83, 0.87, 0.93), "gunes": Color(0.95, 0.97, 1.0),
-		"cimen": [Color(0.3, 0.3, 0.22), Color(0.62, 0.6, 0.45)], "cimen_yogun": 0.25,
-		"agac": {"yaprakli": true, "ton": Color(0.55, 0.7, 0.55), "kar": 0.65, "sayi": 420}, "kaya": Color(0.75, 0.8, 0.9),
+		"cimen": [Color(0.3, 0.3, 0.22), Color(0.62, 0.6, 0.45)], "cimen_yogun": 0.08,
+		"agac": {"yaprakli": true, "ton": Color(0.55, 0.7, 0.55), "kar": 0.65, "sayi": 420, "ph": [["fir_sapling", 2.6, 3.4], ["dead_tree_trunk_02", 1.2, 1.5]]}, "kaya": Color(0.75, 0.8, 0.9),
 		"duvar": ["rock023_alb_ht.png", "rock023_nrm_rgh.png", Color(0.8, 0.84, 0.9)],
 		"esnaf": ["Demirci Brann", "Simyacı Ilka", "Tüccar Varo", "Yol Bekçisi Tuna", "Komutan Aysel"],
 		"dusman": ["minyon", "haydut", "savasci", "buyucu"], "renk": Color(0.7, 0.85, 1.15),
@@ -42,7 +42,7 @@ const BOLGELER := [
 		"id": "kor", "ad": "Kor Çölü", "sehir": "Kor Kalesi", "min": 40, "max": 60, "tema": 2, "tohum": 41,
 		"gok": [Color(0.55, 0.5, 0.52), Color(0.92, 0.72, 0.52)], "sis": Color(0.8, 0.62, 0.48), "gunes": Color(1.0, 0.82, 0.62),
 		"cimen": [Color(0.36, 0.3, 0.16), Color(0.7, 0.6, 0.36)], "cimen_yogun": 0.12,
-		"agac": {"yaprakli": false, "ton": Color(1, 1, 1), "kar": 0.0, "sayi": 160}, "kaya": Color(0.78, 0.55, 0.42),
+		"agac": {"yaprakli": false, "ton": Color(1, 1, 1), "kar": 0.0, "sayi": 200, "ph": [["quiver_tree_01", 1.4, 2.0], ["dead_tree_trunk", 1.0, 1.4], ["dead_tree_trunk_02", 1.0, 1.3]]}, "kaya": Color(0.78, 0.55, 0.42),
 		"duvar": ["kum.jpg", "kum_nrm.jpg", Color(0.95, 0.8, 0.62)],
 		"esnaf": ["Demirci Kazım", "Simyacı Sera", "Tüccar Haris", "Yol Bekçisi Demir", "Kale Ağası Yusuf"],
 		"dusman": ["minyon", "haydut", "savasci", "buyucu"], "renk": Color(1.25, 0.8, 0.6),
@@ -160,10 +160,19 @@ static func insa(kok: Node3D, mobil: bool, bolge := 0) -> StaticBody3D:
 
 	# --- ağaçlar
 	var a: Dictionary = veri["agac"]
-	var turler := []
-	for i in 3:
-		turler.append(Arazi.agac_mesh(int(veri["tohum"]) * 7 + i, a["yaprakli"], a["ton"], a["kar"]))
-	var konumlar := [[], [], []]
+	var turler := []      # [govde, yaprak, en_az_olcek, en_cok_olcek]
+	# telefonda yapraklı taranmış ağaçlar çok ağır: yapraklı ağaç kodla çizilir, kuru gövdeler taranmış kalır
+	if mobil:
+		turler.append(Arazi.agac_mesh(int(veri["tohum"]) * 7, a["yaprakli"], a["ton"], a["kar"]) + [0.8, 1.35])
+	for ph in a.get("ph", []):
+		if mobil and not str(ph[0]).begins_with("dead_tree"):
+			continue
+		turler.append([Arazi.ph_mesh(str(ph[0]) + ("_mobil" if mobil else ""), true), null, ph[1], ph[2]])
+	if not mobil:
+		turler.append(Arazi.agac_mesh(int(veri["tohum"]) * 7, a["yaprakli"], a["ton"], a["kar"]) + [0.8, 1.35])
+	var konumlar := []
+	for i in turler.size():
+		konumlar.append([])
 	var sayi := int(a["sayi"] * (0.55 if mobil else 1.0))
 	var deneme := 0
 	while sayi > 0 and deneme < 8000:
@@ -173,58 +182,59 @@ static func insa(kok: Node3D, mobil: bool, bolge := 0) -> StaticBody3D:
 			continue
 		if _yol_yakin(p, 5.0) or Arazi.egim(p.x, p.z) > 0.55:
 			continue
-		# öbek öbek orman: gürültüyle sık ve seyrek yerler
 		if sin(p.x * 0.031 + 1.7) * cos(p.z * 0.027) < -0.25 and randf() < 0.8:
 			continue
-		p.y = Arazi.y(p.x, p.z) - 0.2
+		p.y = Arazi.y(p.x, p.z) - 0.15
 		sayi -= 1
-		var o := randf_range(0.8, 1.35)
-		konumlar[randi() % 3].append(Transform3D(Basis(Vector3.UP, randf() * TAU).scaled(Vector3.ONE * o), p))
+		var r := randf()
+		var ti := 0 if r < 0.7 else (randi() % turler.size())
+		var tr: Array = turler[ti]
+		var o := randf_range(float(tr[2]), float(tr[3]))
+		konumlar[ti].append(Transform3D(Basis(Vector3.UP, randf() * TAU).scaled(Vector3.ONE * o), p))
 		if maxf(absf(p.x), absf(p.z)) < YARI:
 			var s := CollisionShape3D.new()
 			var c := CylinderShape3D.new()
-			c.radius = 0.45 * o
+			c.radius = 0.5
 			c.height = 4.0
 			s.shape = c
 			s.position = p + Vector3(0, 2, 0)
 			govde.add_child(s)
-			engeller.append([p, 0.7 * o])
-	for i in (0 if "agac" in test_kapat else 3):
+			engeller.append([p, 0.8])
+	for i in (0 if "agac" in test_kapat else turler.size()):
 		Arazi.coklu(kok, turler[i][0], konumlar[i], not mobil, 0.0)
 		if turler[i][1]:
 			Arazi.coklu(kok, turler[i][1], konumlar[i], not mobil, 0.0)
 
 	# --- kayalar
-	var km := Arazi.kaya_mat(veri["kaya"])
 	var kmesh := []
-	for ad in ["RockA", "RockB", "RockC"]:
-		var n: Node3D = load("res://assets/arazi/%s.glb" % ad).instantiate()
-		for c in n.find_children("*", "MeshInstance3D", true, false):
-			var m: Mesh = (c as MeshInstance3D).mesh.duplicate()
-			for si in m.get_surface_count():
-				m.surface_set_material(si, km)
-			kmesh.append(m)
-			break
-		n.free()
-	var kk := [[], [], []]
+	var kaya_adlari: Array = ["namaqualand_boulder_02", "rock_07", "rock_09"] if veri["id"] == "kor" else ["rock_moss_set_01_0", "rock_moss_set_01_2", "rock_moss_set_01_4", "rock_07", "rock_09"]
+	for ad in kaya_adlari:
+		kmesh.append(Arazi.ph_mesh(ad))
+	var kk := []
+	for i in kmesh.size():
+		kk.append([])
 	for i in (140 if mobil else 260):
 		var p := Vector3(randf_range(-YARI - 20, YARI + 20), 0, randf_range(-YARI - 20, YARI + 20))
 		if not bos_mu(p, 2.0) and maxf(absf(p.x), absf(p.z)) < YARI - 3.0:
 			continue
 		if _yol_yakin(p, 3.0):
 			continue
-		var o := randf_range(0.1, 0.55) if randf() < 0.85 else randf_range(0.6, 1.3)
-		p.y = Arazi.y(p.x, p.z) - 0.3 * o * 3.0
-		kk[i % 3].append(Transform3D(Basis.from_euler(Vector3(randf() * 0.4, randf() * TAU, randf() * 0.4)).scaled(Vector3.ONE * o), p))
-		if o > 0.6:
+		var ki := i % kmesh.size()
+		var kucuk: bool = str(kaya_adlari[ki]).begins_with("rock_0")
+		var o := (randf_range(1.5, 4.0) if kucuk else randf_range(0.25, 0.7)) if randf() < 0.85 else (randf_range(4.0, 7.0) if kucuk else randf_range(0.8, 1.4))
+		p.y = Arazi.y(p.x, p.z) - 0.15 * o
+		if kucuk:
+			o *= 1.0
+		kk[ki].append(Transform3D(Basis.from_euler(Vector3(randf() * 0.4, randf() * TAU, randf() * 0.4)).scaled(Vector3.ONE * o), p))
+		if (o > 0.6 and not kucuk) or (kucuk and o > 5.0):
 			var s := CollisionShape3D.new()
 			var c := SphereShape3D.new()
-			c.radius = 1.6 * o
+			c.radius = (0.12 if kucuk else 1.2) * o
 			s.shape = c
 			s.position = p + Vector3(0, 0.5, 0)
 			govde.add_child(s)
-			engeller.append([p, 1.8 * o])
-	for i in (0 if "kaya" in test_kapat else 3):
+			engeller.append([p, (0.15 if kucuk else 1.4) * o])
+	for i in (0 if "kaya" in test_kapat else kmesh.size()):
 		Arazi.coklu(kok, kmesh[i], kk[i], not mobil)
 
 	# --- düşman sürü noktaları (seviyeleri yerlerine göre)
@@ -415,8 +425,8 @@ static func _zindan_girisi(kok: Node3D, govde: StaticBody3D, zd: Dictionary) -> 
 	var kaya: Node3D = load("res://assets/arazi/RockB.glb").instantiate()
 	for c in kaya.find_children("*", "MeshInstance3D", true, false):
 		(c as MeshInstance3D).material_override = tas
-	kaya.position = Vector3(0, -2.2, -7.0)
-	kaya.scale = Vector3(3.6, 2.8, 2.6)
+	kaya.position = Vector3(0, -2.0, -8.0)
+	kaya.scale = Vector3(2.4, 2.0, 1.8)
 	giris.add_child(kaya)
 	for x in [-6.0, 6.0]:
 		var s := CollisionShape3D.new()

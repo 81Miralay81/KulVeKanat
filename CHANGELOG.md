@@ -1,5 +1,16 @@
 # Sürüm notları
 
+## 0.6.0
+
+- Poly Haven'dan fotoğrafla taranmış gerçek modeller ve dokular (CC0)
+- Kül Ovaları: taranmış çimenli toprak zemini, gerçek ağaçlar, yosunlu kayalar ve gerçek gökyüzü
+- Ayaz Dağları: taranmış kar zemini ve köknar ağaçları
+- Kor Çölü: taranmış kum zemini, çöl ağacı (quiver), kuru ağaç gövdeleri, çöl kayaları
+- Şehirler: gerçek kale tuğlası duvarlar, arnavut kaldırımı meydan, çakıllı yollar
+- Telefonda ağır yapraklı taranmış ağaçların yerine hafif ağaçlar kullanılır (donma olmasın)
+
+Neden: Görselin daha gerçekçi olması istendi; buradan erişilemeyen Poly Haven varlıkları kullanıcının bilgisayarındaki tarayıcıyla indirildi.
+
 ## 0.5.0
 
 - Gerçekçi grafik: gerçek dokulu tepeli arazi, rüzgârda sallanan çimen, gerçek yapraklı ağaçlar, gökyüzü, taş ve tuğla şehirler

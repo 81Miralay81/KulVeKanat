@@ -67,3 +67,4 @@ Oyun kolu (Xbox tipi) da çalışır.
 - Kum, tuğla, taş, ahşap dokuları: Godot demo projeleri (MIT)
 - Ağaç yaprak ve kabuk dokuları: Babylon.js Assets (CC BY 4.0)
 - Düşman ve eşya modelleri, eşya resimleri: Quaternius UAL mankeni (CC0) üstüne Blender ile kodla üretildi
+- Taranmış ağaç, kaya, zemin dokuları ve gökyüzü: Poly Haven (polyhaven.com, CC0)

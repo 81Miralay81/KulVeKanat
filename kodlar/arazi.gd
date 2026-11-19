@@ -36,15 +36,12 @@ float h(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
 float gr(vec2 p){ vec2 i=floor(p); vec2 f=fract(p); f=f*f*(3.0-2.0*f);
 	return mix(mix(h(i),h(i+vec2(1,0)),f.x), mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x), f.y); }
 void fragment(){
-	vec2 uv1 = dpos.xz * 0.15;
-	vec2 uv2 = dpos.xz * 0.033 + vec2(0.31, 0.77);
+	vec2 uv1 = dpos.xz * 0.11;
+	vec2 uv2 = dpos.xz * 0.027 + vec2(0.31, 0.77);
 	vec4 c1 = texture(a_alb, uv1); vec4 c2 = texture(a_alb, uv2);
 	float v = gr(dpos.xz * 0.045) * 0.6 + gr(dpos.xz * 0.21) * 0.4;
 	vec3 taban = mix(c1.rgb, c2.rgb, 0.45) * a_ton * mix(0.8, 1.12, v);
-	if (tema == 1) { // kar: dokunun ayrıntısını koru, rengi beyaza çek
-		float l = dot(taban, vec3(0.33));
-		taban = mix(vec3(0.86,0.9,0.97), vec3(1.0), l) * mix(0.9, 1.04, v);
-	}
+
 	vec3 kaya = mix(texture(k_alb, dpos.xz * 0.08).rgb, texture(k_alb, vec2(dpos.x + dpos.z, dpos.y) * 0.08).rgb, 0.5) * k_ton;
 	float egim = 1.0 - clamp(dnor.y, 0.0, 1.0);
 	float k = smoothstep(0.2, 0.4, egim + (c1.a - 0.5) * 0.25);
@@ -54,12 +51,12 @@ void fragment(){
 	// toprak yollar (yükseklik dokusunun B kanalı)
 	vec4 bilgi = texture(hm, dpos.xz / alan + 0.5);
 	float yol = smoothstep(0.25, 0.75, bilgi.b + (v - 0.5) * 0.35);
-	vec3 toprak = texture(y_alb, dpos.xz * 0.12).rgb * vec3(0.62, 0.5, 0.4);
+	vec3 toprak = texture(y_alb, dpos.xz * 0.2).rgb;
 	c = mix(c, toprak, yol * (1.0 - k));
 	// şehir meydanı: taş döşeme
 	float d = length(dpos.xz);
 	float meydan = 1.0 - smoothstep(sehir_r - 14.0, sehir_r - 11.0, d + (v - 0.5) * 3.0);
-	vec3 tas = vec3(dot(texture(t_alb, dpos.xz * 0.16).rgb, vec3(0.3, 0.4, 0.3))) * vec3(0.78, 0.75, 0.72);
+	vec3 tas = texture(t_alb, dpos.xz * 0.22).rgb;
 	c = mix(c, tas, meydan);
 	rough = mix(rough, 0.75, meydan);
 	ALBEDO = c;
@@ -255,18 +252,18 @@ static func zemin_kur(kok: Node3D, tema: int, mobil: bool) -> void:
 	var m := ShaderMaterial.new()
 	m.shader = sh
 	var t: Array = {
-		0: ["ground037_alb_ht.png", "ground037_nrm_rgh.png", "rock023_alb_ht.png", "rock023_nrm_rgh.png", Color(1, 1, 1), Color(1, 1, 1)],
-		1: ["ground037_alb_ht.png", "ground037_nrm_rgh.png", "rock023_alb_ht.png", "rock023_nrm_rgh.png", Color(1, 1, 1), Color(0.78, 0.84, 0.95)],
-		2: ["kum.jpg", "kum_nrm.jpg", "rock023_alb_ht.png", "rock023_nrm_rgh.png", Color(1.0, 0.86, 0.72), Color(0.75, 0.5, 0.38)],
+		0: ["res://assets/ph/aerial_grass_rock_Diffuse.jpg", "res://assets/ph/aerial_grass_rock_nor_gl.jpg", "rock023_alb_ht.png", "rock023_nrm_rgh.png", Color(1, 1, 1), Color(1, 1, 1)],
+		1: ["res://assets/ph/snow_02_Diffuse.jpg", "res://assets/ph/snow_02_nor_gl.jpg", "rock023_alb_ht.png", "rock023_nrm_rgh.png", Color(1, 1, 1), Color(0.78, 0.84, 0.95)],
+		2: ["res://assets/ph/aerial_sand_Diffuse.jpg", "res://assets/ph/aerial_sand_nor_gl.jpg", "rock023_alb_ht.png", "rock023_nrm_rgh.png", Color(1, 1, 1), Color(0.75, 0.5, 0.38)],
 	}[tema]
-	m.set_shader_parameter("a_alb", _doku("res://assets/arazi/" + t[0]))
-	m.set_shader_parameter("a_nrm", _doku("res://assets/arazi/" + t[1]))
+	m.set_shader_parameter("a_alb", _doku(t[0]))
+	m.set_shader_parameter("a_nrm", _doku(t[1]))
 	m.set_shader_parameter("k_alb", _doku("res://assets/arazi/" + t[2]))
 	m.set_shader_parameter("k_nrm", _doku("res://assets/arazi/" + t[3]))
 	m.set_shader_parameter("a_ton", t[4])
 	m.set_shader_parameter("k_ton", t[5])
-	m.set_shader_parameter("t_alb", _doku("res://assets/arazi/tugla.jpg"))
-	m.set_shader_parameter("y_alb", _doku("res://assets/arazi/kum.jpg"))
+	m.set_shader_parameter("t_alb", _doku("res://assets/ph/cobblestone_floor_08_Diffuse.jpg"))
+	m.set_shader_parameter("y_alb", _doku("res://assets/ph/gravel_road_Diffuse.jpg"))
 	m.set_shader_parameter("hm", hm_doku)
 	m.set_shader_parameter("tema", tema)
 	m.set_shader_parameter("sehir_r", _sehir_r)
@@ -469,13 +466,37 @@ static func kaya_mat(ton: Color) -> StandardMaterial3D:
 
 static func duvar_mat(doku: String, nrm: String, olcek: float, ton := Color.WHITE) -> StandardMaterial3D:
 	var k := StandardMaterial3D.new()
-	k.albedo_texture = _doku("res://assets/arazi/" + doku)
+	k.albedo_texture = _doku(doku if doku.begins_with("res://") else "res://assets/arazi/" + doku)
 	if nrm != "":
 		k.normal_enabled = true
-		k.normal_texture = _doku("res://assets/arazi/" + nrm)
+		k.normal_texture = _doku(nrm if nrm.begins_with("res://") else "res://assets/arazi/" + nrm)
 	k.uv1_triplanar = true
 	k.uv1_world_triplanar = true
 	k.uv1_scale = Vector3.ONE * olcek
 	k.roughness = 0.88
 	k.albedo_color = ton
 	return k
+
+
+## Poly Haven taranmış modeller (CC0): glb içindeki ilk ağ, malzemeleriyle
+static func ph_mesh(ad: String, kamera_soldur := false) -> Mesh:
+	var anahtar := "ph_" + ad + str(kamera_soldur)
+	if _cache.has(anahtar):
+		return _cache[anahtar]
+	var n: Node3D = load("res://assets/ph/%s.glb" % ad).instantiate()
+	var bulunan: Mesh = null
+	for c in n.find_children("*", "MeshInstance3D", true, false):
+		bulunan = (c as MeshInstance3D).mesh.duplicate()
+		break
+	n.free()
+	if bulunan and kamera_soldur:
+		for i in bulunan.get_surface_count():
+			var m := bulunan.surface_get_material(i)
+			if m is StandardMaterial3D:
+				var y: StandardMaterial3D = m.duplicate()
+				y.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_DITHER
+				y.distance_fade_min_distance = 13.0
+				y.distance_fade_max_distance = 16.0
+				bulunan.surface_set_material(i, y)
+	_cache[anahtar] = bulunan
+	return bulunan
