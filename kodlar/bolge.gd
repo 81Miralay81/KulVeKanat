@@ -1,230 +1,156 @@
 class_name Bolge
 extends RefCounted
-## Açık bölge: Kül Ovaları. Ortada Son Sığınak köyü (NPC'ler), çevrede dolaşan düşman sürüleri,
-## iki zindan girişi, kenarlarda dağlar. Zemin ve ağaçlar MultiMesh ile çizilir (telefonda hızlı).
+## Üç büyük bölge, her birinin ortasında bir şehir:
+##   Kül Ovaları (Son Sığınak, seviye 1-20), Ayaz Dağları (Buzkale, 20-40), Kor Çölü (Kor Kalesi, 40-60).
+## Şehirden uzaklaştıkça düşmanların seviyesi artar. Her bölgede seviye sınırlı üç zindan var.
 
-const YARI := 68.0                       ## oynanabilir alan yarı genişliği
-const KOY_YARICAP := 20.0
-const KOY := Vector3(0, 0, 0)
-const DOGUS := Vector3(0, 0, 6)          ## köyde başlama noktası
-const OLCEK_KOY := 4.5
+const YARI := 150.0                      ## oynanabilir alan yarı genişliği (300 x 300 m)
+const KOY := Vector3.ZERO
+const KOY_YARICAP := 30.0                ## şehir surları (içi güvenli)
+const DOGUS := Vector3(0, 0, 9)
 
-const ZINDANLAR := [
-	{"id": "mahzen", "ad": "Yıkık Mahzen", "konum": Vector3(42, 0, -40), "seviye": 1, "boss": "garran", "dalga": 4},
-	{"id": "cukur", "ad": "Kemik Çukuru", "konum": Vector3(-46, 0, 40), "seviye": 8, "boss": "vezra", "dalga": 5},
+const BOLGELER := [
+	{
+		"id": "kul", "ad": "Kül Ovaları", "sehir": "Son Sığınak", "min": 1, "max": 20, "tema": 0, "tohum": 7,
+		"gok": [Color(0.36, 0.52, 0.76), Color(0.8, 0.79, 0.76)], "sis": Color(0.72, 0.74, 0.78), "gunes": Color(1.0, 0.94, 0.84),
+		"cimen": [Color(0.28, 0.31, 0.14), Color(0.56, 0.62, 0.3)], "cimen_yogun": 1.0,
+		"agac": {"yaprakli": true, "ton": Color(0.95, 1.0, 0.9), "kar": 0.0, "sayi": 520}, "kaya": Color(0.85, 0.82, 0.78),
+		"duvar": ["tugla.jpg", "tugla_nrm.jpg", Color(0.95, 0.9, 0.85)],
+		"esnaf": ["Demirci Haldun", "Simyacı Nevra", "Tüccar Kerem", "Yol Bekçisi Orhun", "Muhtar Selim"],
+		"dusman": ["minyon", "haydut", "savasci", "buyucu"], "renk": Color(1, 1, 1),
+		"zindanlar": [
+			{"id": "mahzen", "ad": "Yıkık Mahzen", "seviye": 5, "boss": "garran", "dalga": 5, "tema": 0, "aci": -0.8},
+			{"id": "cukur", "ad": "Kemik Çukuru", "seviye": 12, "boss": "vezra", "dalga": 6, "tema": 1, "aci": 2.3},
+			{"id": "kule", "ad": "Yanık Kule", "seviye": 18, "boss": "morvas", "dalga": 7, "tema": 2, "aci": 4.1},
+		],
+	},
+	{
+		"id": "ayaz", "ad": "Ayaz Dağları", "sehir": "Buzkale", "min": 20, "max": 40, "tema": 1, "tohum": 23,
+		"gok": [Color(0.42, 0.56, 0.78), Color(0.86, 0.89, 0.93)], "sis": Color(0.83, 0.87, 0.93), "gunes": Color(0.95, 0.97, 1.0),
+		"cimen": [Color(0.3, 0.3, 0.22), Color(0.62, 0.6, 0.45)], "cimen_yogun": 0.25,
+		"agac": {"yaprakli": true, "ton": Color(0.55, 0.7, 0.55), "kar": 0.65, "sayi": 420}, "kaya": Color(0.75, 0.8, 0.9),
+		"duvar": ["rock023_alb_ht.png", "rock023_nrm_rgh.png", Color(0.8, 0.84, 0.9)],
+		"esnaf": ["Demirci Brann", "Simyacı Ilka", "Tüccar Varo", "Yol Bekçisi Tuna", "Komutan Aysel"],
+		"dusman": ["minyon", "haydut", "savasci", "buyucu"], "renk": Color(0.7, 0.85, 1.15),
+		"zindanlar": [
+			{"id": "magara", "ad": "Donmuş Mağara", "seviye": 25, "boss": "buzpence", "dalga": 6, "tema": 3, "aci": 0.4},
+			{"id": "mezar", "ad": "Buz Mezarlığı", "seviye": 32, "boss": "kiravan", "dalga": 7, "tema": 1, "aci": 2.6},
+			{"id": "taht", "ad": "Ayaz Tahtı", "seviye": 38, "boss": "ayazkral", "dalga": 8, "tema": 3, "aci": 4.6},
+		],
+	},
+	{
+		"id": "kor", "ad": "Kor Çölü", "sehir": "Kor Kalesi", "min": 40, "max": 60, "tema": 2, "tohum": 41,
+		"gok": [Color(0.55, 0.5, 0.52), Color(0.92, 0.72, 0.52)], "sis": Color(0.8, 0.62, 0.48), "gunes": Color(1.0, 0.82, 0.62),
+		"cimen": [Color(0.36, 0.3, 0.16), Color(0.7, 0.6, 0.36)], "cimen_yogun": 0.12,
+		"agac": {"yaprakli": false, "ton": Color(1, 1, 1), "kar": 0.0, "sayi": 160}, "kaya": Color(0.78, 0.55, 0.42),
+		"duvar": ["kum.jpg", "kum_nrm.jpg", Color(0.95, 0.8, 0.62)],
+		"esnaf": ["Demirci Kazım", "Simyacı Sera", "Tüccar Haris", "Yol Bekçisi Demir", "Kale Ağası Yusuf"],
+		"dusman": ["minyon", "haydut", "savasci", "buyucu"], "renk": Color(1.25, 0.8, 0.6),
+		"zindanlar": [
+			{"id": "tapinak", "ad": "Kızıl Kum Tapınağı", "seviye": 45, "boss": "sahra", "dalga": 7, "tema": 2, "aci": 1.0},
+			{"id": "ocak", "ad": "Lav Ocağı", "seviye": 52, "boss": "lavkral", "dalga": 8, "tema": 2, "aci": 3.3},
+			{"id": "son", "ad": "Son Kanatlı'nın Mezarı", "seviye": 58, "boss": "korkral", "dalga": 9, "tema": 4, "aci": 5.2, "final": true},
+		],
+	},
 ]
 
-const ESNAFLAR := [
-	{"id": "demirci", "ad": "Demirci Haldun", "model": "Barbarian", "sakla": ["2H_Axe"], "anim": "Idle", "konum": Vector3(-9.5, 0, 3.0), "renk": Color(1.0, 0.55, 0.2)},
-	{"id": "simyaci", "ad": "Simyacı Nevra", "model": "Mage", "sakla": ["Spellbook_open"], "anim": "Idle", "konum": Vector3(9.0, 0, 4.0), "renk": Color(0.4, 1.0, 0.5)},
-	{"id": "tuccar", "ad": "Tüccar Kerem", "model": "Rogue_Hooded", "sakla": ["Knife"], "anim": "Idle", "konum": Vector3(0.5, 0, -8.5), "renk": Color(0.8, 0.5, 1.0)},
+## Şehirdeki esnafların yerleri (adlar bölgeye göre değişir)
+const ESNAF_YER := [
+	{"id": "demirci", "konum": Vector3(-9.0, 0, 3.0), "renk": Color(1.0, 0.55, 0.2), "model": "Gladyator", "anim": "Fixing_Kneeling", "ton": Color(0.8, 0.72, 0.65)},
+	{"id": "simyaci", "konum": Vector3(9.0, 0, 4.0), "renk": Color(0.4, 1.0, 0.5), "model": "InsanBuyucu", "anim": "Spell_Simple_Idle", "ton": Color(0.7, 1.0, 0.75)},
+	{"id": "tuccar", "konum": Vector3(0.5, 0, -9.0), "renk": Color(0.8, 0.5, 1.0), "model": "ElfOkcu", "anim": "Idle_Talking", "ton": Color(0.9, 0.75, 1.0)},
+	{"id": "yolcu", "konum": Vector3(-7.0, 0, -7.0), "renk": Color(0.4, 0.8, 1.0), "model": "Gladyator", "anim": "Idle_Torch", "ton": Color(0.7, 0.8, 1.0)},
+	{"id": "gorev", "konum": Vector3(7.0, 0, -6.0), "renk": Color(1.0, 0.85, 0.3), "model": "InsanBuyucu", "anim": "Idle_Talking", "ton": Color(1.0, 0.9, 0.7)},
 ]
 
-static var _sahneler := {}
-
-const ZEMIN_SHADER := """
-shader_type spatial;
-render_mode diffuse_lambert, specular_disabled;
-uniform sampler2D gurultu : repeat_enable, filter_linear_mipmap;
-uniform sampler2D gurultu2 : repeat_enable, filter_linear_mipmap;
-void fragment() {
-	vec2 uv = UV * 22.0;
-	float n = texture(gurultu, uv * 0.12).r;
-	float m = texture(gurultu2, uv).r;
-	vec3 cim = mix(vec3(0.17, 0.25, 0.11), vec3(0.30, 0.36, 0.16), m);
-	vec3 kul = mix(vec3(0.30, 0.28, 0.26), vec3(0.42, 0.39, 0.35), m);
-	vec3 toprak = vec3(0.33, 0.25, 0.17);
-	vec3 c = mix(cim, kul, smoothstep(0.52, 0.72, n));
-	c = mix(c, toprak, smoothstep(0.75, 0.9, m) * 0.5);
-	ALBEDO = c;
-	ROUGHNESS = 0.95;
-}
-"""
-static var suru_noktalari: Array = []    ## düşman sürülerinin doğduğu yerler
+static var aktif := 0
+static var veri: Dictionary = BOLGELER[0]
+static var zindanlar: Array = []
+static var ESNAFLAR: Array = []
+static var suru_noktalari: Array = []    ## [{konum, seviye}]
+static var test_kapat: Array = []
+static var engeller: Array = []          ## [Vector3 merkez, yarıçap] (ağaç/bina; ışınlanma ve doğuş için)
 
 
-static func _yukle(ad: String) -> PackedScene:
-	if not _sahneler.has(ad):
-		_sahneler[ad] = load("res://assets/koy/%s.glb" % ad)
-	return _sahneler[ad]
+static func dagilim(i: int) -> Dictionary:
+	return BOLGELER[clampi(i, 0, BOLGELER.size() - 1)]
 
 
-static func _koy(kok: Node3D, ad: String, konum: Vector3, aci := 0.0, olcek := OLCEK_KOY) -> Node3D:
-	var n: Node3D = _yukle(ad).instantiate()
-	kok.add_child(n)
-	n.position = konum
-	n.rotation.y = aci
-	n.scale = Vector3.ONE * olcek
-	return n
+static func zindan_konumu(b: Dictionary, z: Dictionary) -> Vector3:
+	var t := float(int(z["seviye"]) - int(b["min"])) / float(int(b["max"]) - int(b["min"]))
+	var r := lerpf(55.0, YARI - 22.0, clampf(t, 0.0, 1.0))
+	var a: float = z["aci"]
+	return Vector3(cos(a) * r, 0, sin(a) * r)
 
 
-static func _mesh(ad: String) -> Mesh:
-	var n := _yukle(ad).instantiate()
-	var bulunan: Mesh = null
-	for c in n.find_children("*", "MeshInstance3D", true, false):
-		bulunan = c.mesh
-		break
-	n.free()
-	return bulunan
+## Bir noktadaki düşmanların seviyesi: şehirden uzaklaştıkça artar.
+static func seviye_noktada(p: Vector3) -> int:
+	var t := clampf((Vector2(p.x, p.z).length() - 38.0) / (YARI - 48.0), 0.0, 1.0)
+	return clampi(int(round(lerpf(float(veri["min"]), float(veri["max"]), t))), int(veri["min"]), int(veri["max"]))
 
 
-static func _cok(kok: Node3D, ad: String, donusumler: Array, golge := false) -> void:
-	if donusumler.is_empty():
-		return
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = _mesh(ad)
-	mm.instance_count = donusumler.size()
-	for i in donusumler.size():
-		mm.set_instance_transform(i, donusumler[i])
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if golge else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	kok.add_child(mmi)
+static func bos_mu(p: Vector3, pay := 3.0) -> bool:
+	if Vector2(p.x, p.z).length() < KOY_YARICAP + pay + 2.0:
+		return false
+	for z in zindanlar:
+		if Vector2(p.x - z["konum"].x, p.z - z["konum"].z).length() < 14.0 + pay:
+			return false
+	if absf(p.x) > YARI - 3.0 or absf(p.z) > YARI - 3.0:
+		return false
+	return true
 
 
-static func _yol_uzerinde(p: Vector3) -> bool:
-	for z in ZINDANLAR:
-		var a := Vector3(0, 0, 0)
+static func _yol_yakin(p: Vector3, pay: float) -> bool:
+	for z in zindanlar:
 		var b: Vector3 = z["konum"]
-		var ab := b - a
-		var t := clampf((p - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
-		if (a + ab * t).distance_to(p) < 4.0:
+		var ab := Vector2(b.x, b.z)
+		var q := Vector2(p.x, p.z)
+		var t := clampf(q.dot(ab) / ab.length_squared(), 0.0, 1.0)
+		if (ab * t).distance_to(q) < pay:
 			return true
 	return false
 
 
-static func bos_mu(p: Vector3, pay := 3.0) -> bool:
-	## Ağaç/kaya koymak için uygun mu: köy, yollar ve zindan girişleri boş kalsın
-	if p.distance_to(KOY) < KOY_YARICAP + pay:
-		return false
-	if _yol_uzerinde(p):
-		return false
-	for z in ZINDANLAR:
-		if p.distance_to(z["konum"]) < 9.0:
-			return false
-	return true
+static func insa(kok: Node3D, mobil: bool, bolge := 0) -> StaticBody3D:
+	aktif = bolge
+	veri = dagilim(bolge)
+	seed(int(veri["tohum"]) * 13)
+	zindanlar.clear()
+	var duzlukler := [[Vector3.ZERO, KOY_YARICAP + 2.0]]
+	var yollar := []
+	for z in veri["zindanlar"]:
+		var d: Dictionary = z.duplicate()
+		d["konum"] = zindan_konumu(veri, z)
+		zindanlar.append(d)
+		yollar.append([Vector2.ZERO, Vector2(d["konum"].x, d["konum"].z)])
+	ESNAFLAR.clear()
+	for i in ESNAF_YER.size():
+		var e: Dictionary = ESNAF_YER[i].duplicate()
+		e["ad"] = veri["esnaf"][i]
+		ESNAFLAR.append(e)
+	for d in zindanlar:
+		var p: Vector3 = d["konum"]
+		p.y = Arazi.ham_y(int(veri["tohum"]), p.x, p.z, KOY_YARICAP + 2.0)
+		d["konum"] = p
+		duzlukler.append([p, 9.0])
+	Arazi.hazirla(int(veri["tohum"]), YARI, KOY_YARICAP + 2.0, duzlukler, yollar, float(veri["cimen_yogun"]))
 
-
-static func insa(kok: Node3D, mobil: bool) -> StaticBody3D:
-	seed(2026)
 	var govde := StaticBody3D.new()
 	govde.collision_layer = 1
 	kok.add_child(govde)
+	engeller.clear()
 
-	# --- zemin: tek büyük düzlem, gürültüyle çim ve kül lekeleri (tek çizim, telefonda hızlı)
-	var zemin := MeshInstance3D.new()
-	var pm0 := PlaneMesh.new()
-	pm0.size = Vector2(YARI * 2 + 40, YARI * 2 + 40)
-	zemin.mesh = pm0
-	var sh := Shader.new()
-	sh.code = ZEMIN_SHADER
-	var zm := ShaderMaterial.new()
-	zm.shader = sh
-	for i in 2:
-		var nt := NoiseTexture2D.new()
-		nt.seamless = true
-		nt.width = 256
-		nt.height = 256
-		var fn := FastNoiseLite.new()
-		fn.frequency = 0.012 if i == 0 else 0.05
-		fn.seed = 7 + i
-		nt.noise = fn
-		zm.set_shader_parameter("gurultu" if i == 0 else "gurultu2", nt)
-	zemin.material_override = zm
-	kok.add_child(zemin)
-	var zs := StaticBody3D.new()
-	kok.add_child(zs)
+	Arazi.zemin_kur(kok, int(veri["tema"]), mobil)
+	if float(veri["cimen_yogun"]) > 0.0 and not "cimen" in test_kapat:
+		Arazi.cimen_kur(kok, mobil, veri["cimen"][0], veri["cimen"][1])
 
-	# --- toprak yollar (köyden zindanlara)
-	var yol_mat := StandardMaterial3D.new()
-	yol_mat.albedo_color = Color(0.42, 0.32, 0.22)
-	yol_mat.roughness = 1.0
-	for zd in ZINDANLAR:
-		var b: Vector3 = zd["konum"]
-		var uzunluk := b.length()
-		var m := MeshInstance3D.new()
-		var pm := PlaneMesh.new()
-		pm.size = Vector2(4.5, uzunluk)
-		m.mesh = pm
-		m.material_override = yol_mat
-		m.position = b * 0.5 + Vector3(0, 0.03, 0)
-		m.rotation.y = atan2(b.x, b.z)
-		kok.add_child(m)
-	var meydan := MeshInstance3D.new()
-	var cm := CylinderMesh.new()
-	cm.top_radius = 14.0
-	cm.bottom_radius = 14.0
-	cm.height = 0.05
-	cm.radial_segments = 40
-	meydan.mesh = cm
-	meydan.material_override = yol_mat
-	meydan.position = Vector3(0, 0.02, 0)
-	kok.add_child(meydan)
-
-	# --- köy: Son Sığınak
-	var binalar := [
-		["building_blacksmith_red", Vector3(-15, 0, 4), PI * 0.5],
-		["building_tavern_red", Vector3(15, 0, 6), -PI * 0.5],
-		["building_market_red", Vector3(0, 0, -15), 0.0],
-		["building_church_red", Vector3(-14, 0, -12), PI * 0.25],
-		["building_home_A_red", Vector3(13, 0, -11), -PI * 0.3],
-		["building_home_B_red", Vector3(-12, 0, 15), PI * 0.8],
-		["building_home_A_red", Vector3(10, 0, 16), PI],
-		["building_windmill_red", Vector3(-24, 0, -2), PI * 0.5],
-		["building_tower_A_red", Vector3(20, 0, -18), 0.0],
-		["building_well_red", Vector3(0, 0, 0), 0.0],
-	]
-	for b in binalar:
-		_koy(kok, b[0], b[1], b[2])
-		var s := CollisionShape3D.new()
-		var c := CylinderShape3D.new()
-		c.radius = 2.6 if b[0] != "building_well_red" else 1.3
-		c.height = 5.0
-		s.shape = c
-		s.position = b[1] + Vector3(0, 2.5, 0)
-		govde.add_child(s)
-	for p in [[Vector3(-11, 0, 7), 0.3], [Vector3(-12, 0, 0), 1.1], [Vector3(11, 0, 1), 0.0], [Vector3(4, 0, -11), 0.5], [Vector3(-3, 0, -11), 1.9]]:
-		_koy(kok, ["barrel", "crate_A_big", "weaponrack", "sack", "wheelbarrow"][randi() % 5], p[0], p[1])
-	_koy(kok, "weaponrack", Vector3(-11.5, 0, 5.5), PI * 0.5)
-	_koy(kok, "resource_lumber", Vector3(-19, 0, 8), 0.4)
-	_koy(kok, "tent", Vector3(4, 0, -10), 0.2)
-	_koy(kok, "flag_red", Vector3(3, 0, 3), 0.0)
-	# köy çiti (yollara kapı bırakarak)
-	for i in 36:
-		var a := TAU * i / 36.0
-		var p := Vector3(cos(a), 0, sin(a)) * (KOY_YARICAP + 1.5)
-		if _yol_uzerinde(p) or absf(p.x) < 4.0 and p.z > 0:
-			continue
-		_koy(kok, "fence_wood_straight", p, -a, OLCEK_KOY * 0.9)
-	# köy ışıkları (meydanda iki fener)
-	for p in [Vector3(-5, 3.5, 5), Vector3(5, 3.5, -5)]:
-		var l := OmniLight3D.new()
-		l.light_color = Color(1.0, 0.65, 0.3)
-		l.light_energy = 2.2
-		l.omni_range = 14.0
-		l.position = p
-		l.visible = Efekt.isik_var()
-		kok.add_child(l)
-
-	# --- zindan girişleri
-	for zd in ZINDANLAR:
+	_sehir(kok, govde, mobil)
+	for zd in zindanlar:
 		_zindan_girisi(kok, govde, zd)
 
-	# --- dağlar (kenar) + görünmez duvar
-	var daglar := []
-	var dag_adlari := ["mountain_A_grass_trees", "mountain_B_grass_trees", "mountain_C_grass"]
-	var dag_listesi := {0: [], 1: [], 2: []}
-	for i in 64:
-		var a := TAU * i / 64.0
-		var r := YARI + randf_range(6.0, 12.0)
-		var p := Vector3(cos(a) * r, -0.5, sin(a) * r)
-		var o := randf_range(7.0, 10.0)
-		dag_listesi[i % 3].append(Transform3D(Basis(Vector3.UP, randf() * TAU).scaled(Vector3(o, o, o)), p))
-	for k in dag_listesi:
-		_cok(kok, dag_adlari[k], dag_listesi[k])
-	for kenar in [[Vector3(0, 2, -YARI - 1), Vector3(YARI * 2 + 4, 4, 2)], [Vector3(0, 2, YARI + 1), Vector3(YARI * 2 + 4, 4, 2)],
-			[Vector3(-YARI - 1, 2, 0), Vector3(2, 4, YARI * 2 + 4)], [Vector3(YARI + 1, 2, 0), Vector3(2, 4, YARI * 2 + 4)]]:
+	# görünmez sınır duvarları (dağların eteği)
+	for kenar in [[Vector3(0, 5, -YARI - 1), Vector3(YARI * 2 + 4, 30, 2)], [Vector3(0, 5, YARI + 1), Vector3(YARI * 2 + 4, 30, 2)],
+			[Vector3(-YARI - 1, 5, 0), Vector3(2, 30, YARI * 2 + 4)], [Vector3(YARI + 1, 5, 0), Vector3(2, 30, YARI * 2 + 4)]]:
 		var s := CollisionShape3D.new()
 		var bx := BoxShape3D.new()
 		bx.size = kenar[1]
@@ -232,91 +158,245 @@ static func insa(kok: Node3D, mobil: bool) -> StaticBody3D:
 		s.position = kenar[0]
 		govde.add_child(s)
 
-	# --- ağaçlar ve kayalar (köy, yollar ve girişler boş)
-	var agac_adlari := ["trees_A_large", "trees_A_medium", "trees_B_large", "trees_B_medium", "tree_single_A", "tree_single_B"]
-	var agaclar := {}
-	for ad in agac_adlari:
-		agaclar[ad] = []
-	var sayi := 90 if mobil else 150
+	# --- ağaçlar
+	var a: Dictionary = veri["agac"]
+	var turler := []
+	for i in 3:
+		turler.append(Arazi.agac_mesh(int(veri["tohum"]) * 7 + i, a["yaprakli"], a["ton"], a["kar"]))
+	var konumlar := [[], [], []]
+	var sayi := int(a["sayi"] * (0.55 if mobil else 1.0))
 	var deneme := 0
-	while sayi > 0 and deneme < 3000:
+	while sayi > 0 and deneme < 8000:
 		deneme += 1
-		var p := Vector3(randf_range(-YARI + 2, YARI - 2), 0, randf_range(-YARI + 2, YARI - 2))
-		if not bos_mu(p, 7.0):
+		var p := Vector3(randf_range(-YARI - 30, YARI + 30), 0, randf_range(-YARI - 30, YARI + 30))
+		if not bos_mu(p, 6.0) and maxf(absf(p.x), absf(p.z)) < YARI - 3.0:
 			continue
+		if _yol_yakin(p, 5.0) or Arazi.egim(p.x, p.z) > 0.55:
+			continue
+		# öbek öbek orman: gürültüyle sık ve seyrek yerler
+		if sin(p.x * 0.031 + 1.7) * cos(p.z * 0.027) < -0.25 and randf() < 0.8:
+			continue
+		p.y = Arazi.y(p.x, p.z) - 0.2
 		sayi -= 1
-		var ad: String = agac_adlari[randi() % agac_adlari.size()]
-		var o := randf_range(2.8, 3.6) if ad.begins_with("trees") else randf_range(3.2, 4.2)
-		agaclar[ad].append(Transform3D(Basis(Vector3.UP, randf() * TAU).scaled(Vector3(o, o, o)), p))
-		if ad.begins_with("tree_single") or ad.ends_with("large"):
+		var o := randf_range(0.8, 1.35)
+		konumlar[randi() % 3].append(Transform3D(Basis(Vector3.UP, randf() * TAU).scaled(Vector3.ONE * o), p))
+		if maxf(absf(p.x), absf(p.z)) < YARI:
 			var s := CollisionShape3D.new()
 			var c := CylinderShape3D.new()
-			c.radius = 0.6 if ad.begins_with("tree_single") else 1.8
+			c.radius = 0.45 * o
 			c.height = 4.0
 			s.shape = c
 			s.position = p + Vector3(0, 2, 0)
 			govde.add_child(s)
-	for ad in agaclar:
-		_cok(kok, ad, agaclar[ad], not mobil)
-	var kayalar := {"rock_single_A": [], "rock_single_B": [], "rock_single_C": [], "rock_single_E": [], "hills_B": []}
-	for i in 120:
-		var p := Vector3(randf_range(-YARI, YARI), 0, randf_range(-YARI, YARI))
-		if not bos_mu(p, 2.0):
-			continue
-		var ad: String = kayalar.keys()[randi() % kayalar.size()]
-		var o := randf_range(5.0, 9.0) if ad != "hills_B" else randf_range(4.0, 6.0)
-		kayalar[ad].append(Transform3D(Basis(Vector3.UP, randf() * TAU).scaled(Vector3(o, o, o)), p))
-	for ad in kayalar:
-		_cok(kok, ad, kayalar[ad])
+			engeller.append([p, 0.7 * o])
+	for i in (0 if "agac" in test_kapat else 3):
+		Arazi.coklu(kok, turler[i][0], konumlar[i], not mobil, 0.0)
+		if turler[i][1]:
+			Arazi.coklu(kok, turler[i][1], konumlar[i], not mobil, 0.0)
 
-	# --- düşman sürü noktaları
+	# --- kayalar
+	var km := Arazi.kaya_mat(veri["kaya"])
+	var kmesh := []
+	for ad in ["RockA", "RockB", "RockC"]:
+		var n: Node3D = load("res://assets/arazi/%s.glb" % ad).instantiate()
+		for c in n.find_children("*", "MeshInstance3D", true, false):
+			var m: Mesh = (c as MeshInstance3D).mesh.duplicate()
+			for si in m.get_surface_count():
+				m.surface_set_material(si, km)
+			kmesh.append(m)
+			break
+		n.free()
+	var kk := [[], [], []]
+	for i in (140 if mobil else 260):
+		var p := Vector3(randf_range(-YARI - 20, YARI + 20), 0, randf_range(-YARI - 20, YARI + 20))
+		if not bos_mu(p, 2.0) and maxf(absf(p.x), absf(p.z)) < YARI - 3.0:
+			continue
+		if _yol_yakin(p, 3.0):
+			continue
+		var o := randf_range(0.1, 0.55) if randf() < 0.85 else randf_range(0.6, 1.3)
+		p.y = Arazi.y(p.x, p.z) - 0.3 * o * 3.0
+		kk[i % 3].append(Transform3D(Basis.from_euler(Vector3(randf() * 0.4, randf() * TAU, randf() * 0.4)).scaled(Vector3.ONE * o), p))
+		if o > 0.6:
+			var s := CollisionShape3D.new()
+			var c := SphereShape3D.new()
+			c.radius = 1.6 * o
+			s.shape = c
+			s.position = p + Vector3(0, 0.5, 0)
+			govde.add_child(s)
+			engeller.append([p, 1.8 * o])
+	for i in (0 if "kaya" in test_kapat else 3):
+		Arazi.coklu(kok, kmesh[i], kk[i], not mobil)
+
+	# --- düşman sürü noktaları (seviyeleri yerlerine göre)
 	suru_noktalari.clear()
 	deneme = 0
-	while suru_noktalari.size() < 22 and deneme < 2000:
+	while suru_noktalari.size() < 70 and deneme < 6000:
 		deneme += 1
-		var a := randf() * TAU
-		var r := randf_range(KOY_YARICAP + 12.0, YARI - 6.0)
-		var p := Vector3(cos(a) * r, 0, sin(a) * r)
+		var p := Vector3(randf_range(-YARI + 8, YARI - 8), 0, randf_range(-YARI + 8, YARI - 8))
+		if Vector2(p.x, p.z).length() < KOY_YARICAP + 14.0 or not bos_mu(p, 2.0) or Arazi.egim(p.x, p.z) > 0.4:
+			continue
 		var uygun := true
+		for en in engeller:
+			if Vector2(p.x - en[0].x, p.z - en[0].z).length() < float(en[1]) + 4.0:
+				uygun = false
+				break
 		for q in suru_noktalari:
-			if q.distance_to(p) < 14.0:
+			if q["konum"].distance_to(p) < 17.0:
 				uygun = false
-		for zd in ZINDANLAR:
-			if p.distance_to(zd["konum"]) < 10.0:
-				uygun = false
+				break
 		if uygun:
-			suru_noktalari.append(p)
-
-	# --- havada süzülen kül
-	var kul := GPUParticles3D.new()
-	kul.amount = 60 if mobil else 140
-	kul.lifetime = 8.0
-	kul.preprocess = 8.0
-	var pm2 := ParticleProcessMaterial.new()
-	pm2.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	pm2.emission_box_extents = Vector3(22, 4, 22)
-	pm2.direction = Vector3(0.3, 1, 0.2)
-	pm2.spread = 40
-	pm2.initial_velocity_min = 0.2
-	pm2.initial_velocity_max = 0.6
-	pm2.gravity = Vector3(0, 0.05, 0)
-	var g := Gradient.new()
-	g.set_color(0, Color(1, 1, 1, 0))
-	g.add_point(0.2, Color(1, 1, 1, 1))
-	g.set_color(1, Color(1, 1, 1, 0))
-	var gt := GradientTexture1D.new()
-	gt.gradient = g
-	pm2.color_ramp = gt
-	kul.process_material = pm2
-	var q2 := QuadMesh.new()
-	q2.size = Vector2(0.1, 0.1)
-	q2.material = Efekt.parca_mat(Color(1.0, 0.55, 0.2), 2.5)
-	kul.draw_pass_1 = q2
-	kul.name = "Kul"
-	kul.local_coords = false
-	kul.visibility_aabb = AABB(Vector3(-25, -5, -25), Vector3(50, 12, 50))
-	kok.add_child(kul)
+			p.y = Arazi.y(p.x, p.z)
+			suru_noktalari.append({"konum": p, "seviye": seviye_noktada(p)})
+	randomize()
 	return govde
+
+
+# ------------------------------------------------------------------ şehir
+static func _kutu(kok: Node3D, boyut: Vector3, konum: Vector3, aci: float, mat: Material, golge := true) -> MeshInstance3D:
+	var m := MeshInstance3D.new()
+	var b := BoxMesh.new()
+	b.size = boyut
+	m.mesh = b
+	m.material_override = mat
+	m.position = konum
+	m.rotation.y = aci
+	if not golge:
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	kok.add_child(m)
+	return m
+
+
+static func _cati(gen: float, der: float, yuk: float) -> ArrayMesh:
+	## Beşik çatı (iki eğimli yüz + iki üçgen alın)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var x := gen * 0.5 + 0.45
+	var z := der * 0.5 + 0.45
+	var p := [Vector3(-x, 0, -z), Vector3(x, 0, -z), Vector3(x, 0, z), Vector3(-x, 0, z), Vector3(-x, yuk, 0), Vector3(x, yuk, 0)]
+	for t in [[0, 4, 5], [0, 5, 1], [3, 2, 5], [3, 5, 4], [0, 3, 4], [1, 5, 2], [0, 1, 2], [0, 2, 3]]:
+		for k in t:
+			st.add_vertex(p[k])
+	st.generate_normals()
+	return st.commit()
+
+
+static func _bina(kok: Node3D, govde: StaticBody3D, p: Vector3, aci: float, gen: float, der: float, yuk: float, duvar: Material, cati: Material, tahta: Material, pencere: Material) -> void:
+	var n := Node3D.new()
+	n.position = p
+	n.rotation.y = aci
+	kok.add_child(n)
+	_kutu(n, Vector3(gen + 0.3, 0.6, der + 0.3), Vector3(0, 0.3, 0), 0.0, _tas(0.35, Color(0.7, 0.68, 0.65)))
+	_kutu(n, Vector3(gen, yuk, der), Vector3(0, yuk * 0.5, 0), 0.0, duvar)
+	# ahşap kirişler
+	for sx in [-1, 1]:
+		for sz in [-1, 1]:
+			_kutu(n, Vector3(0.28, yuk, 0.28), Vector3(sx * gen * 0.5, yuk * 0.5, sz * der * 0.5), 0.0, tahta, false)
+	_kutu(n, Vector3(gen + 0.1, 0.25, der + 0.1), Vector3(0, yuk * 0.55, 0), 0.0, tahta, false)
+	var c := MeshInstance3D.new()
+	c.mesh = _cati(gen, der, minf(gen, der) * 0.55 + 0.6)
+	c.material_override = cati
+	c.position.y = yuk
+	n.add_child(c)
+	# kapı ve pencereler (cephe +Z: meydana bakar)
+	_kutu(n, Vector3(1.3, 2.3, 0.12), Vector3(0, 1.15 + 0.3, der * 0.5 + 0.03), 0.0, tahta, false)
+	for x in [-gen * 0.3, gen * 0.3]:
+		_kutu(n, Vector3(0.8, 0.9, 0.08), Vector3(x, yuk * 0.72, der * 0.5 + 0.03), 0.0, pencere, false)
+	# baca
+	if gen > 6.0:
+		_kutu(n, Vector3(0.8, 2.0, 0.8), Vector3(gen * 0.3, yuk + 1.6, -der * 0.15), 0.0, _tas(0.4, Color(0.55, 0.52, 0.5)))
+	var s := CollisionShape3D.new()
+	var bx := BoxShape3D.new()
+	bx.size = Vector3(gen + 0.4, 5.0, der + 0.4)
+	s.shape = bx
+	govde.add_child(s)
+	s.transform = Transform3D(Basis(Vector3.UP, aci), p + Vector3(0, 2.5, 0))
+	engeller.append([p, maxf(gen, der) * 0.6])
+
+
+static func _tas(olcek: float, ton: Color) -> StandardMaterial3D:
+	return Arazi.duvar_mat("rock023_alb_ht.png", "rock023_nrm_rgh.png", olcek, ton)
+
+
+static func _sehir(kok: Node3D, govde: StaticBody3D, mobil: bool) -> void:
+	var dv: Array = veri["duvar"]
+	var duvar := Arazi.duvar_mat(dv[0], dv[1], 0.28, dv[2])
+	var tahta := Arazi.duvar_mat("tahta.jpg", "", 0.5, Color(0.45, 0.33, 0.24))
+	var cati := Arazi.duvar_mat("tahta.jpg", "", 0.7, Color(0.42, 0.24, 0.18) if veri["id"] != "ayaz" else Color(0.85, 0.88, 0.95))
+	var pencere := StandardMaterial3D.new()
+	pencere.albedo_color = Color(0.2, 0.12, 0.05)
+	pencere.emission_enabled = true
+	pencere.emission = Color(1.0, 0.62, 0.25)
+	pencere.emission_energy_multiplier = 1.6
+	var binalar := [
+		[Vector3(-17, 0, 5), PI * 0.5, 8.0, 6.0, 4.2], [Vector3(17, 0, 6), -PI * 0.5, 9.0, 6.5, 4.6],
+		[Vector3(0, 0, -18), 0.0, 10.0, 6.0, 5.0], [Vector3(-15, 0, -13), PI * 0.25, 7.0, 6.0, 4.0],
+		[Vector3(14, 0, -13), -PI * 0.25, 7.0, 5.5, 4.0], [Vector3(-13, 0, 16), PI * 0.78, 6.5, 5.5, 3.8],
+		[Vector3(12, 0, 17), -PI * 0.8, 6.5, 5.5, 3.8], [Vector3(-22, 0, -3), PI * 0.5, 6.0, 5.0, 3.6],
+		[Vector3(22, 0, -4), -PI * 0.5, 6.0, 5.0, 3.6],
+	]
+	for b in binalar:
+		_bina(kok, govde, b[0], b[1], b[2], b[3], b[4], duvar, cati, tahta, pencere)
+	# meydan: anıt (sütun + mangal ateşi)
+	var tas := _tas(0.45, Color(0.75, 0.72, 0.68))
+	_kutu(kok, Vector3(3.2, 0.6, 3.2), Vector3(0, 0.3, 0), 0.0, tas)
+	_kutu(kok, Vector3(1.1, 3.4, 1.1), Vector3(0, 2.0, 0), PI * 0.25, tas)
+	var ates := MeshInstance3D.new()
+	ates.mesh = Efekt.halka_mesh(0.1, 0.6)
+	ates.material_override = Efekt.parlak_mat(Color(1.0, 0.5, 0.15), 2.5)
+	ates.position = Vector3(0, 3.75, 0)
+	kok.add_child(ates)
+	var s0 := CollisionShape3D.new()
+	var c0 := CylinderShape3D.new()
+	c0.radius = 1.9
+	c0.height = 4.0
+	s0.shape = c0
+	s0.position = Vector3(0, 2, 0)
+	govde.add_child(s0)
+	var l := OmniLight3D.new()
+	l.light_color = Color(1.0, 0.62, 0.3)
+	l.light_energy = 2.5
+	l.omni_range = 16.0
+	l.position = Vector3(0, 4.5, 0)
+	l.visible = Efekt.isik_var()
+	kok.add_child(l)
+	# surlar: yolların geçtiği yerlerde kapı
+	var kapilar := []
+	for z in zindanlar:
+		kapilar.append(atan2(z["konum"].z, z["konum"].x))
+	kapilar.append(PI * 0.5)    # doğuş tarafı
+	var sur := _tas(0.3, Color(0.78, 0.76, 0.72) if veri["id"] != "kor" else Color(0.9, 0.72, 0.55))
+	var parca := 44
+	var r := KOY_YARICAP + 1.0
+	for i in parca:
+		var a := TAU * (i + 0.5) / parca
+		var kapi := false
+		for k in kapilar:
+			if absf(wrapf(a - k, -PI, PI)) < 0.12:
+				kapi = true
+		if kapi:
+			continue
+		var p := Vector3(cos(a) * r, 0, sin(a) * r)
+		var uz := TAU * r / parca + 0.15
+		var m := _kutu(kok, Vector3(uz, 3.6, 1.0), p + Vector3(0, 1.8, 0), -a + PI * 0.5, sur)
+		if i % 4 == 0:
+			_kutu(kok, Vector3(1.8, 5.0, 1.8), p + Vector3(0, 2.5, 0), -a, sur)
+		var s := CollisionShape3D.new()
+		var bx := BoxShape3D.new()
+		bx.size = Vector3(uz, 4.0, 1.2)
+		s.shape = bx
+		s.transform = Transform3D(Basis(Vector3.UP, -a + PI * 0.5), p + Vector3(0, 2, 0))
+		govde.add_child(s)
+		m.name = "Sur"
+	# meşaleler
+	for k in kapilar:
+		for d in [-0.16, 0.16]:
+			var p := Vector3(cos(k + d) * r, 0, sin(k + d) * r)
+			_kutu(kok, Vector3(0.18, 2.4, 0.18), p + Vector3(0, 1.2, 0), 0.0, tahta, false)
+			var f := MeshInstance3D.new()
+			f.mesh = Efekt.halka_mesh(0.0, 0.25)
+			f.material_override = Efekt.parlak_mat(Color(1.0, 0.55, 0.15), 2.5)
+			f.position = p + Vector3(0, 2.5, 0)
+			kok.add_child(f)
 
 
 static func _zindan_girisi(kok: Node3D, govde: StaticBody3D, zd: Dictionary) -> void:
@@ -324,44 +404,49 @@ static func _zindan_girisi(kok: Node3D, govde: StaticBody3D, zd: Dictionary) -> 
 	var giris := Node3D.new()
 	kok.add_child(giris)
 	giris.position = p
-	giris.rotation.y = atan2(-p.x, -p.z)      # kapı köye baksın
-	var kapi: Node3D = load("res://assets/zindan/wall_doorway.glb").instantiate()
-	giris.add_child(kapi)
-	kapi.scale = Vector3.ONE * 1.4
-	for x in [-4.2, 4.2]:
-		var d: Node3D = load("res://assets/zindan/wall.glb").instantiate()
-		giris.add_child(d)
-		d.position = Vector3(x * 1.4 * 0.75, 0, 0)
-		d.scale = Vector3.ONE * 1.4
+	giris.rotation.y = atan2(-p.x, -p.z)      # kapı şehre baksın
+	var tas := Arazi.kaya_mat(veri["kaya"] * 0.85)
+	tas.uv1_scale = Vector3.ONE * 0.25
+	for x in [-2.4, 2.4]:
+		_kutu(giris, Vector3(1.4, 5.2, 1.6), Vector3(x, 2.6, 0), 0.0, tas)
+		_kutu(giris, Vector3(1.8, 0.6, 2.0), Vector3(x, 0.3, 0), 0.0, tas)
+	_kutu(giris, Vector3(6.4, 1.2, 1.9), Vector3(0, 5.6, 0), 0.0, tas)
+	# arkasında kaya kütlesi
+	var kaya: Node3D = load("res://assets/arazi/RockB.glb").instantiate()
+	for c in kaya.find_children("*", "MeshInstance3D", true, false):
+		(c as MeshInstance3D).material_override = tas
+	kaya.position = Vector3(0, -2.2, -7.0)
+	kaya.scale = Vector3(3.6, 2.8, 2.6)
+	giris.add_child(kaya)
 	for x in [-6.0, 6.0]:
 		var s := CollisionShape3D.new()
 		var b := BoxShape3D.new()
-		b.size = Vector3(5.5, 5, 1.6)
+		b.size = Vector3(7.5, 6, 3.0)
 		s.shape = b
 		govde.add_child(s)
-		s.global_transform = giris.global_transform * Transform3D(Basis(), Vector3(x, 2.5, 0))
-	# girişte parlayan kapı
+		s.global_transform = Transform3D(Basis(Vector3.UP, giris.rotation.y), p) * Transform3D(Basis(), Vector3(x * 0.7, 3, -0.5))
 	var portal := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
-	pm.size = Vector2(3.0, 3.6)
+	pm.size = Vector2(3.4, 5.0)
 	pm.orientation = PlaneMesh.FACE_Z
 	portal.mesh = pm
-	portal.material_override = Efekt.parlak_mat(Color(1.0, 0.35, 0.1), 1.3)
-	portal.position = Vector3(0, 1.9, 0.2)
+	var renk := Color(1.0, 0.35, 0.1) if not zd.get("final", false) else Color(0.7, 0.3, 1.0)
+	portal.material_override = Efekt.parlak_mat(renk, 1.1)
+	portal.position = Vector3(0, 2.5, 0.1)
 	giris.add_child(portal)
 	var halka := MeshInstance3D.new()
 	halka.mesh = Efekt.halka_mesh(2.2, 3.0)
-	halka.material_override = Efekt.parlak_mat(Color(1.0, 0.45, 0.1), 1.5)
-	halka.position = Vector3(0, 0.06, 2.5)
+	halka.material_override = Efekt.parlak_mat(renk, 1.5)
+	halka.position = Vector3(0, 0.08, 3.0)
 	giris.add_child(halka)
 	var l := Label3D.new()
 	l.text = "%s\nSeviye %d+" % [zd["ad"], zd["seviye"]]
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	l.font_size = 72
-	l.pixel_size = 0.01
+	l.pixel_size = 0.011
 	l.outline_size = 16
 	l.modulate = Color(1.0, 0.75, 0.4)
-	l.position = Vector3(0, 6.5, 0)
+	l.position = Vector3(0, 7.8, 0)
 	var f = load("res://assets/font/Cinzel-Black.ttf")
 	if f:
 		l.font = f
@@ -369,6 +454,12 @@ static func _zindan_girisi(kok: Node3D, govde: StaticBody3D, zd: Dictionary) -> 
 
 
 static func giris_noktasi(zd: Dictionary) -> Vector3:
-	## Zindandan çıkınca belirdiğin yer (kapının köy tarafı)
+	## Zindandan çıkınca belirdiğin yer (kapının şehir tarafı)
 	var p: Vector3 = zd["konum"]
-	return p + (-p).normalized() * 5.0
+	var q := p + Vector3(-p.x, 0, -p.z).normalized() * 5.0
+	q.y = Arazi.y(q.x, q.z)
+	return q
+
+
+static func dogus() -> Vector3:
+	return DOGUS

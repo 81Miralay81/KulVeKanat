@@ -25,6 +25,9 @@ var mana := 120.0
 var ofke := 0.0               ## son vuruş çubuğu (0-100)
 var altin := 0
 var iksir := 3
+var eliksir := 0               ## artı basma malzemesi (düşmanlardan düşer)
+var taslar := {}               ## mana taşları: "tur_kademe" -> adet
+const SEVIYE_MAX := 60
 var esyalar := {}             ## yuva -> eşya
 var canta: Array = []          ## çantadaki eşyalar
 const CANTA_MAX := 24
@@ -130,7 +133,20 @@ func deger(k: String) -> float:
 	var v: float = temel.get(k, 0.0)
 	for y in esyalar:
 		v += Esya.deger(esyalar[y], k)
+	if _set_bonus.is_empty():
+		_set_bonus = Esya.set_bonuslari(esyalar)
+	if k == "hasar" or k == "can":
+		v *= 1.0 + float(_set_bonus.get(k, 0.0))
+	elif k == "kritik" or k == "hiz":
+		v += float(_set_bonus.get(k, 0.0))
 	return v
+
+
+var _set_bonus := {}
+
+
+func esyalar_degisti() -> void:
+	_set_bonus = {}
 
 
 func _ozellikleri_hesapla() -> void:
@@ -158,7 +174,7 @@ func ikon(eylem: String) -> Texture2D:
 
 func kayit_verisi() -> Dictionary:
 	return {"sinif": sinif, "seviye": seviye, "tecrube": tecrube, "altin": altin, "iksir": iksir,
-		"esyalar": esyalar, "canta": canta}
+		"esyalar": esyalar, "canta": canta, "eliksir": eliksir, "taslar": taslar, "surum": 2}
 
 
 func kayit_yukle(d: Dictionary) -> void:
@@ -168,11 +184,23 @@ func kayit_yukle(d: Dictionary) -> void:
 	iksir = int(d.get("iksir", 3))
 	esyalar = d.get("esyalar", {})
 	canta = d.get("canta", [])
+	eliksir = int(d.get("eliksir", 0))
+	taslar = {}
+	var ts: Dictionary = d.get("taslar", {})
+	for k in ts:
+		taslar[k] = int(ts[k])
+	# eski sürüm kayıtlarındaki eşyalar yeni sisteme uymuyor: yalnız altın ve seviye korunur
+	if int(d.get("surum", 1)) < 2:
+		esyalar = {}
+		canta = []
+		eliksir = 10
 	# JSON sayıları ondalık gelir: eşya alanlarını düzelt
 	for e in esyalar.values() + canta:
-		e["nadirlik"] = int(e["nadirlik"])
-		e["seviye"] = int(e["seviye"])
-		e["arti"] = int(e.get("arti", 0))
+		for alan in ["nadirlik", "seviye", "arti", "gereken", "kademe", "set", "yuva_sayisi"]:
+			e[alan] = int(e.get(alan, -1 if alan == "set" else 0))
+		for t in e.get("taslar", []):
+			t["kademe"] = int(t["kademe"])
+	esyalar_degisti()
 	_ozellikleri_hesapla()
 	can = deger("can")
 	mana = deger("mana")
@@ -181,12 +209,16 @@ func kayit_yukle(d: Dictionary) -> void:
 
 
 func gereken_tecrube() -> int:
-	return int(70.0 * pow(seviye, 1.55))
+	## seviye yükseldikçe zorlaşır: 1→2: 90, 10→11: ~7.200, 30→31: ~57.000, 59→60: ~210.000
+	return int(90.0 * pow(seviye, 1.9))
 
 
 func tecrube_ekle(x: int) -> void:
+	if seviye >= SEVIYE_MAX:
+		tecrube = 0
+		return
 	tecrube += x
-	while tecrube >= gereken_tecrube():
+	while tecrube >= gereken_tecrube() and seviye < SEVIYE_MAX:
 		tecrube -= gereken_tecrube()
 		seviye += 1
 		_ozellikleri_hesapla()
@@ -211,10 +243,16 @@ func _can_oranini_koru(islem: Callable) -> void:
 	mana = minf(mana, deger("mana"))
 
 
+func takabilir_mi(e: Dictionary) -> bool:
+	return seviye >= int(e.get("gereken", 1)) and (e.get("sinif", "") == "" or e.get("sinif", "") == sinif)
+
+
 func esya_al(e: Dictionary) -> void:
 	var y: String = e["yuva"]
-	if not esyalar.has(y):
-		_can_oranini_koru(func(): esyalar[y] = e)
+	if not esyalar.has(y) and takabilir_mi(e):
+		_can_oranini_koru(func():
+			esyalar[y] = e
+			esyalar_degisti())
 		gorunum_guncelle()
 		esya_alindi.emit(e, "takildi")
 	elif canta.size() < CANTA_MAX:
@@ -226,20 +264,67 @@ func esya_al(e: Dictionary) -> void:
 
 
 func satis_fiyati(e: Dictionary) -> int:
-	return 10 + int(e["seviye"]) * 3 * (int(e["nadirlik"]) + 1) * (int(e["nadirlik"]) + 1)
+	return 10 + int(e["seviye"]) * 3 * (int(e["nadirlik"]) + 1) * (int(e["nadirlik"]) + 1) + int(e.get("arti", 0)) * int(e["seviye"]) * 4
 
 
-func tak(i: int) -> void:
+func tak(i: int) -> bool:
 	if i < 0 or i >= canta.size():
-		return
+		return false
 	var e: Dictionary = canta[i]
+	if not takabilir_mi(e):
+		return false
 	canta.remove_at(i)
 	var y: String = e["yuva"]
 	_can_oranini_koru(func():
 		if esyalar.has(y):
 			canta.insert(i, esyalar[y])
-		esyalar[y] = e)
+		esyalar[y] = e
+		esyalar_degisti())
 	gorunum_guncelle()
+	return true
+
+
+func tas_ekle(t: Dictionary, adet := 1) -> void:
+	var k := Esya.tas_anahtar(t)
+	taslar[k] = int(taslar.get(k, 0)) + adet
+
+
+## Mana taşını eşyaya tak (yuva boşsa). Dönüş: başarı
+func tas_tak(e: Dictionary, anahtar: String) -> bool:
+	if int(taslar.get(anahtar, 0)) <= 0:
+		return false
+	var liste: Array = e.get("taslar", [])
+	if liste.size() >= int(e.get("yuva_sayisi", 1)):
+		return false
+	_can_oranini_koru(func():
+		liste.append(Esya.tas_coz(anahtar))
+		e["taslar"] = liste
+		esyalar_degisti())
+	taslar[anahtar] = int(taslar[anahtar]) - 1
+	if taslar[anahtar] <= 0:
+		taslar.erase(anahtar)
+	return true
+
+
+## Artı bas: Eliksir + altın harcar. Dönüş: "basari"/"basarisiz"/"yandi"/"eliksir"/"altin"/"max"
+func arti_bas(e: Dictionary) -> String:
+	var a := int(e.get("arti", 0))
+	if a >= Esya.ARTI_MAX:
+		return "max"
+	if eliksir < Esya.eliksir_gereken(a):
+		return "eliksir"
+	var fiyat := Esya.altin_gereken(e)
+	if altin < fiyat:
+		return "altin"
+	eliksir -= Esya.eliksir_gereken(a)
+	altin -= fiyat
+	var sonuc := [""]
+	_can_oranini_koru(func():
+		sonuc[0] = Esya.arti_bas(e)
+		esyalar_degisti())
+	if e.get("yuva", "") == "Silah":
+		gorunum_guncelle()
+	return sonuc[0]
 
 
 func cikar(y: String) -> bool:
@@ -247,7 +332,8 @@ func cikar(y: String) -> bool:
 		return false
 	_can_oranini_koru(func():
 		canta.append(esyalar[y])
-		esyalar.erase(y))
+		esyalar.erase(y)
+		esyalar_degisti())
 	gorunum_guncelle()
 	return true
 
@@ -391,7 +477,7 @@ func _physics_process(dt: float) -> void:
 				kanat.ac(0.9 if _son_vurus_sure > 0 else 0.35)
 
 	move_and_slide()
-	global_position.y = 0.0
+	global_position.y = ana.zemin_y(global_position.x, global_position.z) if ana else 0.0
 	# model yönünü yumuşak çevir (KayKit modelleri +Z'ye bakar)
 	var hedef_aci := atan2(bakis.x, bakis.z)
 	if durum == "kasirga" and bilgi.get("gercekci", false):
@@ -984,13 +1070,15 @@ func _isinlanma() -> void:
 	var yon := g.normalized() if g.length() > 0.2 else bakis
 	var bas := global_position
 	var hedef := bas + yon * 7.5
-	hedef.x = clampf(hedef.x, -18.8, 18.8)
-	hedef.z = clampf(hedef.z, -18.8, 18.8)
-	for s in Dunya.SUTUNLAR:
-		var f: Vector3 = hedef - s
+	var lim: float = ana.sinir() - 0.3
+	hedef.x = clampf(hedef.x, -lim, lim)
+	hedef.z = clampf(hedef.z, -lim, lim)
+	for s in ana.engel_listesi():
+		var f: Vector3 = hedef - s[0]
 		f.y = 0
-		if f.length() < 1.3:
-			hedef = s + f.normalized() * 1.4
+		if f.length() < float(s[1]) + 0.3:
+			hedef = s[0] + f.normalized() * (float(s[1]) + 0.4)
+	hedef.y = ana.zemin_y(hedef.x, hedef.z)
 	Efekt.parcacik(bas + Vector3(0, 1.0, 0), 30, Color(0.5, 0.75, 1.0), 0.7, 4.0, 0.0, 0.3, 180.0, true, true, Vector3(0.3, 0.8, 0.3))
 	global_position = hedef
 	bakis = yon
@@ -1058,7 +1146,7 @@ func gorunum_guncelle() -> void:
 	var km := str(kalkan.get("model", "")) if kalkan.get("sinif", "") == sinif else ""
 	if km == "" and bilgi.has("varsayilan_kalkan"):
 		km = bilgi["varsayilan_kalkan"]
-	if sol and km.begins_with("shield"):
+	if sol and (km.begins_with("shield") or km.begins_with("kalkan")):
 		var k := Esya.model_olustur(km)
 		if k:
 			if gercekci:

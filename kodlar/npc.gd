@@ -11,14 +11,27 @@ func _ready() -> void:
 	var m: Node3D = load("res://assets/karakter/%s.glb" % veri["model"]).instantiate()
 	add_child(m)
 	m.scale = Vector3.ONE * 1.1
+	var ton: Color = veri.get("ton", Color(1, 1, 1))
+	if ton != Color(1, 1, 1):
+		for mi in m.find_children("*", "MeshInstance3D", true, false):
+			for i in (mi as MeshInstance3D).mesh.get_surface_count():
+				var a := (mi as MeshInstance3D).get_active_material(i)
+				if a is StandardMaterial3D:
+					var y: StandardMaterial3D = a.duplicate()
+					y.albedo_color = a.albedo_color * ton
+					(mi as MeshInstance3D).set_surface_override_material(i, y)
 	for n in m.find_children("*", "MeshInstance3D", true, false):
 		var ust := n.get_parent()
-		if ust is BoneAttachment3D and str(ust.name).begins_with("handslot") and not n.name in veri["sakla"]:
+		if ust is BoneAttachment3D and str(ust.name).begins_with("handslot") and not n.name in veri.get("sakla", []):
 			n.visible = false
 	var ap: AnimationPlayer = m.find_child("AnimationPlayer", true, false)
-	if ap and ap.has_animation(veri["anim"]):
-		ap.get_animation(veri["anim"]).loop_mode = Animation.LOOP_LINEAR
-		ap.play(veri["anim"])
+	var anim: String = veri.get("anim", "Idle")
+	if ap and not ap.has_animation(anim):
+		anim = "Idle"
+	if ap and ap.has_animation(anim):
+		ap.get_animation(anim).loop_mode = Animation.LOOP_LINEAR
+		ap.play(anim)
+		ap.seek(randf() * 2.0)
 	m.rotation.y = atan2(-position.x, -position.z)   # meydana baksın
 	var halka := MeshInstance3D.new()
 	halka.mesh = Efekt.halka_mesh(0.9, 1.25)

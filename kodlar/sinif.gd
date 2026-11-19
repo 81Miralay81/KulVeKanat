@@ -6,7 +6,7 @@ const LISTE := ["muhafiz", "avci", "buyucu"]
 
 const VERI := {
 	"muhafiz": {
-		"ad": "Kılıç Muhafızı", "model": "Gladyator", "sakla": [], "bekleme_anim": "Sword_Idle", "gercekci": true, "varsayilan": "sword_2handed", "varsayilan_kalkan": "shield_round",
+		"ad": "Kılıç Muhafızı", "model": "Gladyator", "sakla": [], "bekleme_anim": "Sword_Idle", "gercekci": true, "varsayilan": "kilic_0", "varsayilan_kalkan": "kalkan_0",
 		"rol": "Gladyatör · yakın dövüş · zırh %32",
 		"aciklama": "İki elli kılıçla sürüleri biçer.\nKor Kasırgası ile etrafını yakar,\nYer Yarma ile önünü temizler.",
 		"can": 420.0, "mana": 110.0, "hasar": 28.0, "kritik": 8.0, "zirh": 32.0, "hiz": 0.0, "kacinma": 0.0,
@@ -26,7 +26,7 @@ const VERI := {
 			"yetenek4": ["Zehir Bombası", "zehir"], "son_vurus": ["Gölge Fırtınası", "golgefirtina"], "iksir": ["İksir", "iksir"]},
 	},
 	"buyucu": {
-		"ad": "Kül Büyücü", "model": "InsanBuyucu", "sakla": [], "bekleme_anim": "Spell_Simple_Idle", "gercekci": true, "varsayilan": "staff",
+		"ad": "Kül Büyücü", "model": "InsanBuyucu", "sakla": [], "bekleme_anim": "Spell_Simple_Idle", "gercekci": true, "varsayilan": "asa_0",
 		"rol": "İnsan büyücü · alan hasarı · kırılgan",
 		"aciklama": "Ateş topları atar, düşmanları dondurur.\nAlev Halkası ve Kül Kıyameti ile\nekranı ateşe verir.",
 		"can": 220.0, "mana": 170.0, "hasar": 32.0, "kritik": 10.0, "zirh": 3.0, "hiz": 4.0, "kacinma": 6.0,

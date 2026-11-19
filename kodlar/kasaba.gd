@@ -72,9 +72,9 @@ func _ready() -> void:
 	sutunlar.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sutunlar.add_theme_constant_override("separation", 16)
 	dikey.add_child(sutunlar)
-	_demirci_liste = _esnaf(sutunlar, "Demirci Haldun", "Eşya yükseltme", "Barbarian", "Cheer", "demirci", Color(1.0, 0.55, 0.2), ["2H_Axe"])
-	_simyaci_liste = _esnaf(sutunlar, "Simyacı Nevra", "İksir ve tüy", "Mage", "Spellcasting", "simyaci", Color(0.4, 1.0, 0.5), ["Spellbook_open"])
-	_tuccar_liste = _esnaf(sutunlar, "Tüccar Kerem", "Gizemli sandıklar", "Rogue_Hooded", "Interact", "tuccar", Color(0.8, 0.5, 1.0), ["Knife"])
+	_demirci_liste = _esnaf(sutunlar, "Demirci", "Artı basma (Eliksir)", "Gladyator", "Fixing_Kneeling", "demirci", Color(1.0, 0.55, 0.2), [])
+	_simyaci_liste = _esnaf(sutunlar, "Simyacı", "İksir, Eliksir, mana taşı", "InsanBuyucu", "Spell_Simple_Idle", "simyaci", Color(0.4, 1.0, 0.5), [])
+	_tuccar_liste = _esnaf(sutunlar, "Tüccar", "Gizemli sandıklar", "ElfOkcu", "Idle_Talking", "tuccar", Color(0.8, 0.5, 1.0), [])
 
 
 func _etiket(metin: String, boy: int, renk: Color) -> Label:
@@ -110,6 +110,7 @@ func _esnaf(kok: Container, ad: String, is_ad: String, model: String, anim: Stri
 	yazi.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ust.add_child(yazi)
 	var a := _etiket(ad, 24, renk.lightened(0.2))
+	a.name = "EsnafAd"
 	a.add_theme_font_override("font", _baslik_font)
 	yazi.add_child(a)
 	yazi.add_child(_etiket(is_ad, 18, Color(0.85, 0.8, 0.72)))
@@ -134,7 +135,17 @@ func ac(esnaf := "") -> void:
 	for k in _paneller:
 		_paneller[k].visible = esnaf == "" or k == esnaf
 	visible = true
-	_mesaj.text = "Altınını burada harca. Eşyalarını demirciye yükselt, iksirini tamamla."
+	_mesaj.text = "Altınını burada harca. Demirci Eliksir ile artı basar; +10'dan sonra eşya yanabilir."
+	var b: Label = find_child("Baslik", true, false)
+	if b:
+		b.text = str(Bolge.veri["sehir"]).to_upper()
+	var adlar: Array = Bolge.veri["esnaf"]
+	for i in 3:
+		var k: String = ["demirci", "simyaci", "tuccar"][i]
+		if _paneller.has(k):
+			var l: Label = _paneller[k].find_child("EsnafAd", true, false)
+			if l:
+				l.text = adlar[i]
 	yenile()
 
 
@@ -165,7 +176,8 @@ func yenile() -> void:
 	for liste in [_demirci_liste, _simyaci_liste, _tuccar_liste]:
 		for c in liste.get_children():
 			c.queue_free()
-	# --- Demirci
+	# --- Demirci (Eliksir + altın ile artı)
+	_demirci_liste.add_child(_etiket("Eliksir: %d" % kahraman.eliksir, 18, Color(0.4, 1.0, 0.85)))
 	var bos := true
 	for y in Esya.YUVALAR:
 		if not kahraman.esyalar.has(y):
@@ -173,13 +185,14 @@ func yenile() -> void:
 		bos = false
 		var e: Dictionary = kahraman.esyalar[y]
 		var arti := int(e.get("arti", 0))
-		if arti >= 10:
+		if arti >= Esya.ARTI_MAX:
 			_satir(_demirci_liste, "%s\n(en yüksek)" % Esya.tam_ad(e), Esya.renk(e), "TAMAM", false, func(): pass)
 			continue
-		var fiyat := yukseltme_fiyati(e)
-		var sans := basari_sansi(arti)
-		_satir(_demirci_liste, "%s\n+%d → +%d  ·  başarı %%%d" % [Esya.tam_ad(e), arti, arti + 1, int(sans * 100)], Esya.renk(e),
-			"%d altın" % fiyat, kahraman.altin >= fiyat, func(): _yukselt(e))
+		var fiyat := Esya.altin_gereken(e)
+		var el := Esya.eliksir_gereken(arti)
+		var risk := "  ·  YANABİLİR" if Esya.yanma_riski(arti) else ""
+		_satir(_demirci_liste, "%s\n+%d → +%d  ·  başarı %%%d%s" % [Esya.tam_ad(e), arti, arti + 1, int(Esya.basari_sansi(arti) * 100), risk], Esya.renk(e),
+			"%d El. %d altın" % [el, fiyat], kahraman.altin >= fiyat and kahraman.eliksir >= el, func(): _yukselt(e))
 	if bos:
 		_demirci_liste.add_child(_etiket("Takılı eşyan yok. Önce envanterden bir şey tak.", 17, Color(0.75, 0.7, 0.65)))
 	# --- Simyacı
@@ -193,6 +206,19 @@ func yenile() -> void:
 			kahraman.altin -= 120
 			kahraman.ofke = 100.0
 			_bilgi("Kanat Tüyü kullanıldı: son vuruş hazır!", "seviye"))
+	var el_fiyat := 150 + kahraman.seviye * 20
+	_satir(_simyaci_liste, "Eliksir\nArtı basma malzemesi (pahalı; düşmanlardan da düşer)", Color(0.4, 1.0, 0.85), "%d altın" % el_fiyat,
+		kahraman.altin >= el_fiyat, func():
+			kahraman.altin -= el_fiyat
+			kahraman.eliksir += 1
+			_bilgi("Eliksir alındı.", "altin"))
+	var tas_fiyat := 300 + kahraman.seviye * 30
+	_satir(_simyaci_liste, "Rastgele Mana Taşı\nSeviyene uygun kademede", Color(0.5, 0.7, 1.0), "%d altın" % tas_fiyat,
+		kahraman.altin >= tas_fiyat, func():
+			kahraman.altin -= tas_fiyat
+			var t := Esya.tas_uret(kahraman.seviye)
+			kahraman.tas_ekle(t)
+			_bilgi("%s alındı (envanterden tak)." % Esya.tas_adi(t), "esya"))
 	_satir(_simyaci_liste, "Tam İyileşme\nCan ve mana tamamen dolar", Color(0.6, 0.85, 1.0), "40 altın",
 		kahraman.altin >= 40, func():
 			kahraman.altin -= 40
@@ -209,44 +235,35 @@ func yenile() -> void:
 		_satir(_tuccar_liste, "%s\n%s" % [t[0], t[1]], Esya.NADIRLIK[en_az]["renk"], "%d altın" % fiyat,
 			kahraman.altin >= fiyat and kahraman.canta.size() < Kahraman.CANTA_MAX, func():
 				kahraman.altin -= fiyat
-				var e := Esya.uret(kahraman.seviye, en_az)
+				var e := Esya.uret(kahraman.seviye, en_az, kahraman.sinif)
 				kahraman.canta.append(e)
 				_bilgi("Sandıktan çıktı: %s [%s] → çantaya" % [e["ad"], Esya.NADIRLIK[e["nadirlik"]]["ad"]], "esya"))
 	var siradan := 0
 	for e in kahraman.canta:
-		if e["nadirlik"] == 0:
+		if int(e["nadirlik"]) == 0 and int(e.get("arti", 0)) == 0:
 			siradan += kahraman.satis_fiyati(e)
 	_satir(_tuccar_liste, "Çantadaki Sıradan eşyaları sat", Color(0.8, 0.8, 0.8), "+%d altın" % siradan, siradan > 0, func():
 		var i := kahraman.canta.size() - 1
 		while i >= 0:
-			if kahraman.canta[i]["nadirlik"] == 0:
+			if int(kahraman.canta[i]["nadirlik"]) == 0 and int(kahraman.canta[i].get("arti", 0)) == 0:
 				kahraman.sat(i)
 			i -= 1
 		_bilgi("Sıradan eşyalar satıldı.", "altin"))
 
 
-static func yukseltme_fiyati(e: Dictionary) -> int:
-	var arti := int(e.get("arti", 0))
-	return int((40 + int(e["seviye"]) * 6) * (arti + 1) * (1.0 + int(e["nadirlik"]) * 0.5))
-
-
-static func basari_sansi(arti: int) -> float:
-	return 1.0 if arti < 5 else maxf(0.35, 1.0 - (arti - 4) * 0.12)
-
-
 func _yukselt(e: Dictionary) -> void:
-	var fiyat := yukseltme_fiyati(e)
-	if kahraman.altin < fiyat:
-		return
-	kahraman.altin -= fiyat
-	var arti := int(e.get("arti", 0))
-	if randf() <= basari_sansi(arti):
-		var oran := kahraman.can / maxf(1.0, kahraman.deger("can"))
-		e["arti"] = arti + 1
-		kahraman.can = kahraman.deger("can") * oran
-		_bilgi("Başarılı! %s artık +%d" % [e["ad"], arti + 1], "seviye")
-	else:
-		_bilgi("Örs çatladı... yükseltme başarısız (eşya zarar görmedi).", "aci")
+	var once := int(e.get("arti", 0))
+	match kahraman.arti_bas(e):
+		"basari":
+			_bilgi("Başarılı! %s artık +%d" % [e["ad"], int(e["arti"])], "seviye")
+		"basarisiz":
+			_bilgi("Örs çatladı... başarısız. Eliksir gitti, eşya +%d kaldı." % once, "aci")
+		"yandi":
+			_bilgi("EŞYA YANDI! +%d idi, şimdi +0." % once, "patlama")
+		"eliksir":
+			_bilgi("Yeterli Eliksir yok.", "aci")
+		"altin":
+			_bilgi("Yeterli altın yok.", "aci")
 
 
 func _bilgi(metin: String, ses: String) -> void:

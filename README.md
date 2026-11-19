@@ -60,3 +60,10 @@ Oyun kolu (Xbox tipi) da çalışır.
 - Kahraman gövdesi ve hareketleri: [Quaternius](https://quaternius.com) Universal Animation Library, **CC0**. Zırh, saç, yüz ve kıyafetler `marka/karakter_yap.py` ile üretildi.
 - Yazı tipleri: Cinzel ve Rajdhani, **SIL Open Font License** (Google Fonts).
 - Sesler ve müzik bu proje için kodla üretildi (`marka/sesler.py`).
+
+
+### Ek görsel kaynaklar (0.5.0)
+- Arazi ve kaya dokuları: ambientCG (CC0), Terrain3D demo kayaları
+- Kum, tuğla, taş, ahşap dokuları: Godot demo projeleri (MIT)
+- Ağaç yaprak ve kabuk dokuları: Babylon.js Assets (CC BY 4.0)
+- Düşman ve eşya modelleri, eşya resimleri: Quaternius UAL mankeni (CC0) üstüne Blender ile kodla üretildi

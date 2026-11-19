@@ -341,7 +341,7 @@ func _harita_ciz(c: Vector2, r: float, buyuk: bool) -> void:
 	var olcek := r / (Y * 1.48)
 	if bolge and not buyuk:
 		merkez = kahraman.global_position     # küçük harita oyuncuyu ortalar
-		olcek = r / 34.0
+		olcek = r / 40.0
 	if not buyuk:
 		draw_circle(c, r + 6, Color(0.05, 0.04, 0.05, 0.85))
 		draw_arc(c, r + 6, 0, TAU, 56, ALTIN_K, 3.0, true)
@@ -351,14 +351,14 @@ func _harita_ciz(c: Vector2, r: float, buyuk: bool) -> void:
 		_harita_nokta(Vector3(-Y, 0, -Y), c, olcek, merkez), _harita_nokta(Vector3(Y, 0, -Y), c, olcek, merkez),
 		_harita_nokta(Vector3(Y, 0, Y), c, olcek, merkez), _harita_nokta(Vector3(-Y, 0, Y), c, olcek, merkez)])
 	if buyuk or not bolge:
-		draw_colored_polygon(koseler, Color(0.3, 0.33, 0.22, 0.92) if bolge else Color(0.28, 0.22, 0.2, 0.9))
+		draw_colored_polygon(koseler, _harita_rengi() if bolge else Color(0.28, 0.22, 0.2, 0.9))
 		draw_polyline(PackedVector2Array([koseler[0], koseler[1], koseler[2], koseler[3], koseler[0]]), Color(0.75, 0.62, 0.45), 3.0 if buyuk else 2.0)
 	else:
-		draw_circle(c, r - 2, Color(0.3, 0.33, 0.22, 0.92))
+		draw_circle(c, r - 2, _harita_rengi())
 	var nb := 1.6 if buyuk else 1.0
 	if bolge:
 		# yollar, köy, zindan kapıları, esnaflar
-		for zd in Bolge.ZINDANLAR:
+		for zd in Bolge.zindanlar:
 			var a := _harita_nokta(Vector3.ZERO, c, olcek, merkez)
 			var bz := _harita_nokta(zd["konum"], c, olcek, merkez)
 			if buyuk:
@@ -369,12 +369,12 @@ func _harita_ciz(c: Vector2, r: float, buyuk: bool) -> void:
 			draw_circle(kp, kr, Color(0.55, 0.42, 0.3, 0.8))
 			draw_arc(kp, kr, 0, TAU, 32, Color(1, 0.8, 0.4), 2.0, true)
 			if buyuk:
-				_yazi(kp + Vector2(-120, kr + 26), "SON SIĞINAK (köy)", 18, Color(1, 0.9, 0.7), HORIZONTAL_ALIGNMENT_CENTER, 240)
+				_yazi(kp + Vector2(-120, kr + 26), "%s (şehir)" % str(Bolge.veri["sehir"]).to_upper(), 18, Color(1, 0.9, 0.7), HORIZONTAL_ALIGNMENT_CENTER, 240)
 		for n in get_tree().get_nodes_in_group("npc"):
 			var np := _harita_nokta(n.global_position, c, olcek, merkez)
 			if ic.call(np):
 				draw_circle(np, 4.0 * nb, n.veri["renk"])
-		for zd in Bolge.ZINDANLAR:
+		for zd in Bolge.zindanlar:
 			var zp := _harita_nokta(zd["konum"], c, olcek, merkez)
 			var bitti: bool = zd["id"] in ana.temizlenen
 			if ic.call(zp):
@@ -428,6 +428,15 @@ func _harita_ciz(c: Vector2, r: float, buyuk: bool) -> void:
 		draw_polyline(PackedVector2Array([ok[0], ok[1], ok[2], ok[3], ok[0]]), Color(0.3, 0.12, 0.0), 1.5, true)
 	if not buyuk:
 		_yazi(Vector2(c.x - r, c.y + r + 24), "HARİTA (M)" if not mobil_duzen else "HARİTA", 14, Color(0.85, 0.78, 0.65), HORIZONTAL_ALIGNMENT_CENTER, r * 2)
+
+
+func _harita_rengi() -> Color:
+	match int(Bolge.veri.get("tema", 0)):
+		1:
+			return Color(0.72, 0.76, 0.82, 0.92)
+		2:
+			return Color(0.55, 0.42, 0.28, 0.92)
+	return Color(0.3, 0.33, 0.22, 0.92)
 
 
 func etkilesim_alani() -> Rect2:

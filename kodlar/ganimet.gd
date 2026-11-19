@@ -2,9 +2,10 @@ class_name Ganimet
 extends Node3D
 ## Yerdeki ganimet: altın, iksir ya da eşya. Üstünden geçince toplanır.
 
-var tur := "altin"          ## altin, iksir, esya
+var tur := "altin"          ## altin, iksir, esya, eliksir, tas
 var miktar := 0
 var esya := {}
+var tas := {}
 var kahraman: Node3D
 var _zaman := 0.0
 var _govde: Node3D
@@ -18,6 +19,10 @@ func _ready() -> void:
 		renk = Esya.renk(esya)
 	elif tur == "iksir":
 		renk = Color(1, 0.25, 0.25)
+	elif tur == "eliksir":
+		renk = Color(0.3, 1.0, 0.8)
+	elif tur == "tas":
+		renk = Color(0.35, 0.6, 1.0)
 	_govde = Node3D.new()
 	add_child(_govde)
 	if tur == "altin":
@@ -36,9 +41,9 @@ func _ready() -> void:
 		add_child(aura)
 	else:
 		var m := MeshInstance3D.new()
-		var p: PrimitiveMesh = PrismMesh.new() if tur == "esya" else SphereMesh.new()
+		var p: PrimitiveMesh = PrismMesh.new() if tur == "esya" or tur == "tas" else SphereMesh.new()
 		if p is PrismMesh:
-			p.size = Vector3(0.45, 0.6, 0.45)
+			p.size = Vector3(0.45, 0.6, 0.45) if tur == "esya" else Vector3(0.28, 0.36, 0.28)
 		else:
 			p.radius = 0.22
 			p.height = 0.44
@@ -46,13 +51,13 @@ func _ready() -> void:
 		m.material_override = Efekt.parlak_mat(renk, 2.5)
 		_govde.add_child(m)
 		_govde.position.y = 0.6
-		if tur == "esya":
+		if tur == "esya" or tur == "tas":
 			var alt := MeshInstance3D.new()
 			var p2 := PrismMesh.new()
-			p2.size = Vector3(0.45, 0.6, 0.45)
+			p2.size = (p as PrismMesh).size
 			alt.mesh = p2
 			alt.rotation.z = PI
-			alt.position.y = -0.6
+			alt.position.y = -(p as PrismMesh).size.y
 			alt.material_override = m.material_override
 			m.add_child(alt)
 	if tur == "esya":     # altın yığınlarında ışık yok (çok ışık = yavaşlama)
@@ -81,6 +86,20 @@ func _ready() -> void:
 		add_child(l)
 		if esya["nadirlik"] >= 3:
 			Ses.cal("esya")
+	if tur == "eliksir" or tur == "tas":
+		var l2 := Label3D.new()
+		l2.text = "Eliksir" if tur == "eliksir" else Esya.tas_adi(tas)
+		l2.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		l2.no_depth_test = true
+		l2.font_size = 44
+		l2.pixel_size = 0.006
+		l2.outline_size = 12
+		l2.modulate = renk
+		l2.position.y = 1.2
+		var f2 = load("res://assets/font/Rajdhani-Bold.ttf")
+		if f2:
+			l2.font = f2
+		add_child(l2)
 	# fırlayarak düşme
 	var hedef_y := position.y
 	position.y += 1.2
@@ -96,7 +115,7 @@ func _process(dt: float) -> void:
 	if _toplandi or kahraman == null or not is_instance_valid(kahraman):
 		return
 	var m := global_position.distance_to(kahraman.global_position)
-	var cekim := 1.6 if tur == "esya" else 3.0
+	var cekim := 1.6 if tur == "esya" else 3.2
 	if m < cekim and _zaman > 0.4 and kahraman.durum != "olu":
 		global_position = global_position.move_toward(kahraman.global_position, dt * 12.0)
 		if m < 0.7:
@@ -116,4 +135,14 @@ func _topla() -> void:
 			Ses.cal("altin", -4.0, 0.0)
 		"esya":
 			kahraman.esya_al(esya)
+		"eliksir":
+			kahraman.eliksir += maxi(1, miktar)
+			Ses.cal("altin", -4.0, 0.0)
+			if kahraman.ana:
+				kahraman.ana.mesaj_goster("+%d Eliksir" % maxi(1, miktar), Color(0.4, 1.0, 0.85))
+		"tas":
+			kahraman.tas_ekle(tas)
+			Ses.cal("esya", -6.0)
+			if kahraman.ana:
+				kahraman.ana.mesaj_goster(Esya.tas_adi(tas) + " alındı", Color(0.5, 0.75, 1.0))
 	queue_free()

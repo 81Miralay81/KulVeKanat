@@ -61,7 +61,7 @@ static func yap(model: String, anim: String, boyut: Vector2i, sakla: Array = [],
 		kam.position = Vector3(0, 1.35 * olcek, 3.6 * olcek)
 	kam.fov = 34
 	kok.add_child(kam)
-	kam.look_at(Vector3(0, 1.0 * olcek, 0))
+	kam.transform = kam.transform.looking_at(Vector3(0, 1.0 * olcek, 0))
 	var l := DirectionalLight3D.new()
 	l.rotation_degrees = Vector3(-35, 30, 0)
 	l.light_energy = 1.3

@@ -4,15 +4,30 @@ extends CharacterBody3D
 
 signal oldu_sinyal(d: Dusman)
 
+## can/hasar seviye 1 değerleridir; seviyeyle büyür. xp = tür çarpanı.
 const TURLER := {
-	"minyon": {"model": "Skeleton_Minion", "can": 55.0, "hiz": 3.5, "hasar": 9.0, "menzil": 1.5, "xp": 12, "silah": "Skeleton_Blade", "olcek": 1.0, "ad": "Kül İskeleti"},
-	"haydut": {"model": "Skeleton_Rogue", "can": 65.0, "hiz": 5.0, "hasar": 11.0, "menzil": 1.5, "xp": 16, "silah": "Skeleton_Blade", "olcek": 0.95, "ad": "Kül Haydudu"},
-	"savasci": {"model": "Skeleton_Warrior", "can": 150.0, "hiz": 2.7, "hasar": 18.0, "menzil": 1.8, "xp": 30, "silah": "Skeleton_Axe", "olcek": 1.12, "ad": "Kül Muhafızı"},
-	"buyucu": {"model": "Skeleton_Mage", "can": 75.0, "hiz": 2.6, "hasar": 14.0, "menzil": 9.0, "xp": 24, "silah": "Skeleton_Staff", "olcek": 1.0, "uzak": true, "ad": "Kül Büyücüsü"},
-	"vezra": {"model": "Skeleton_Mage", "can": 4200.0, "hiz": 2.4, "hasar": 30.0, "menzil": 11.0, "xp": 900, "silah": "Skeleton_Staff", "olcek": 2.2, "boss": true, "uzak": true, "ad": "Kemik Rahibi Vezra"},
-	"garran": {"model": "Skeleton_Warrior", "can": 3200.0, "hiz": 3.1, "hasar": 34.0, "menzil": 2.8, "xp": 600, "silah": "Skeleton_Axe", "olcek": 2.3, "boss": true, "ad": "Kor Avcısı Garran"},
+	"minyon": {"model": "KulOlusu", "can": 55.0, "hiz": 3.5, "hasar": 9.0, "menzil": 1.5, "xp": 1.0, "olcek": 1.0, "ad": "Kül Ölüsü"},
+	"haydut": {"model": "Haydut", "can": 65.0, "hiz": 5.0, "hasar": 11.0, "menzil": 1.5, "xp": 1.2, "olcek": 1.0, "ad": "Haydut"},
+	"savasci": {"model": "KaraSovalye", "can": 150.0, "hiz": 2.7, "hasar": 18.0, "menzil": 1.8, "xp": 2.2, "olcek": 1.08, "ad": "Kara Şövalye"},
+	"buyucu": {"model": "Kultcu", "can": 75.0, "hiz": 2.6, "hasar": 14.0, "menzil": 9.0, "xp": 1.7, "olcek": 1.0, "uzak": true, "ad": "Kültçü"},
+	"garran": {"model": "KaraSovalye", "can": 3600.0, "hiz": 3.1, "hasar": 30.0, "menzil": 2.8, "xp": 45.0, "olcek": 2.3, "boss": true, "ad": "Kor Avcısı Garran"},
+	"vezra": {"model": "Kultcu", "can": 3400.0, "hiz": 2.4, "hasar": 26.0, "menzil": 11.0, "xp": 50.0, "olcek": 2.2, "boss": true, "uzak": true, "ad": "Kemik Rahibi Vezra"},
+	"morvas": {"model": "KaraSovalye", "can": 4000.0, "hiz": 3.3, "hasar": 32.0, "menzil": 2.9, "xp": 55.0, "olcek": 2.5, "boss": true, "ad": "Yanık Lord Morvaş", "renk": Color(1.3, 0.75, 0.6)},
+	"buzpence": {"model": "Haydut", "can": 3800.0, "hiz": 4.2, "hasar": 30.0, "menzil": 2.5, "xp": 55.0, "olcek": 2.3, "boss": true, "ad": "Buz Pençe", "renk": Color(0.7, 0.9, 1.3)},
+	"kiravan": {"model": "Kultcu", "can": 3600.0, "hiz": 2.5, "hasar": 28.0, "menzil": 12.0, "xp": 58.0, "olcek": 2.3, "boss": true, "uzak": true, "ad": "Kırağı Rahibesi Kiravan", "renk": Color(0.75, 0.9, 1.3)},
+	"ayazkral": {"model": "KaraSovalye", "can": 4600.0, "hiz": 3.0, "hasar": 34.0, "menzil": 3.0, "xp": 65.0, "olcek": 2.7, "boss": true, "ad": "Ayaz Kral Hirvald", "renk": Color(0.7, 0.85, 1.35)},
+	"sahra": {"model": "Haydut", "can": 4200.0, "hiz": 4.4, "hasar": 32.0, "menzil": 2.6, "xp": 65.0, "olcek": 2.4, "boss": true, "ad": "Kum Hayaleti Sahra", "renk": Color(1.3, 1.0, 0.7)},
+	"lavkral": {"model": "KaraSovalye", "can": 5000.0, "hiz": 2.9, "hasar": 36.0, "menzil": 3.0, "xp": 70.0, "olcek": 2.8, "boss": true, "ad": "Lav Kralı Ateşgöz", "renk": Color(1.4, 0.6, 0.4)},
+	"korkral": {"model": "Kultcu", "can": 6200.0, "hiz": 2.8, "hasar": 38.0, "menzil": 12.0, "xp": 90.0, "olcek": 3.0, "boss": true, "uzak": true, "ad": "Kor Kral", "renk": Color(1.3, 0.55, 1.0)},
 }
-const DONGU := ["Idle", "Idle_Combat", "Walking_D_Skeletons", "Running_A", "Running_C", "Walking_A", "2H_Melee_Idle"]
+const DONGU := ["Idle", "Sword_Idle", "Walk", "Sprint", "Jog_Fwd", "Spell_Simple_Idle"]
+## Eski (KayKit) hareket adı -> gerçekçi manken hareketi
+const ANIM := {
+	"Idle": "Idle", "Idle_Combat": "Sword_Idle", "Walking_D_Skeletons": "Walk", "Running_C": "Jog_Fwd", "Running_A": "Sprint",
+	"1H_Melee_Attack_Chop": "Sword_Attack", "1H_Melee_Attack_Slice_Diagonal": "Sword_Attack", "2H_Melee_Attack_Chop": "Sword_Attack",
+	"Spellcast_Shoot": "Spell_Simple_Shoot", "2H_Melee_Attack_Spin": "Sword_Attack", "Taunt": "Spell_Simple_Shoot",
+	"Hit_A": "Hit_Chest", "Hit_B": "Hit_Head", "Death_A": "Death01", "Death_B": "Death01", "Spawn_Ground_Skeletons": "Idle",
+}
 
 var tur := "minyon"
 var bilgi: Dictionary
@@ -28,6 +43,11 @@ var olu := false
 var yaricap := 0.5
 var ad := ""
 var aggro := true            ## false: oyuncu yaklaşana (ya da vurana) kadar yerinde bekler
+var seviye := 1
+var zindanda := false
+var renk_ton := Color(1, 1, 1)
+var _seviye_etiket: Label3D
+static var _ton_cache := {}
 
 var kahraman: Node3D
 var ana: Node
@@ -70,19 +90,24 @@ void fragment() {
 static var _cubuk_shader: Shader
 
 
-func kur(t: String, dalga: int, elit_mi := false) -> void:
+## seviye: düşmanın sabit seviyesi (1-60). zindan: zindan düşmanları daha güçlü.
+func kur(t: String, sev: int, elit_mi := false, zindan := false) -> void:
 	tur = t
 	bilgi = TURLER[t]
+	seviye = clampi(sev, 1, 63)
+	zindanda = zindan
 	boss = bilgi.get("boss", false)
 	elit = elit_mi and not boss
-	var olcek_can := 1.0 + 0.16 * (dalga - 1)
-	can_max = bilgi["can"] * olcek_can * (3.2 if elit else 1.0)
+	var L := float(seviye - 1)
+	can_max = bilgi["can"] * (1.0 + 0.28 * L) * (1.4 if zindan else 1.0) * (3.2 if elit else 1.0)
 	can = can_max
-	hasar = bilgi["hasar"] * (1.0 + 0.09 * (dalga - 1)) * (1.5 if elit else 1.0)
+	hasar = bilgi["hasar"] * (1.0 + 0.13 * L) * (1.25 if zindan else 1.0) * (1.5 if elit else 1.0)
 	hiz = bilgi["hiz"] * randf_range(0.9, 1.1) * (1.1 if elit else 1.0)
 	menzil = bilgi["menzil"]
-	xp = int(bilgi["xp"] * (1.0 + 0.1 * dalga) * (4.0 if elit else 1.0))
+	xp = int(round(14.0 * pow(float(seviye), 0.85) * float(bilgi["xp"]) * (4.0 if elit else 1.0) * (1.3 if zindan else 1.0)))
 	ad = bilgi["ad"]
+	if bilgi.has("renk"):
+		renk_ton = bilgi["renk"]
 
 
 func _ready() -> void:
@@ -101,20 +126,15 @@ func _ready() -> void:
 
 	model = load("res://assets/karakter/%s.glb" % bilgi["model"]).instantiate()
 	add_child(model)
-	model.scale = Vector3.ONE * olcek
+	model.scale = Vector3.ONE * olcek * 1.08
 	anim = model.find_child("AnimationPlayer", true, false)
 	for a in DONGU:
-		if anim.has_animation(a):
+		if _var(a):
 			anim.get_animation(a).loop_mode = Animation.LOOP_LINEAR
-	var iskelet: Skeleton3D = model.find_child("Skeleton3D", true, false)
-	if iskelet and bilgi.has("silah"):
-		var el := BoneAttachment3D.new()
-		el.bone_name = "handslot.r"
-		iskelet.add_child(el)
-		var s: Node3D = load("res://assets/silah/%s.glb" % bilgi["silah"]).instantiate()
-		el.add_child(s)
 	for m in model.find_children("*", "MeshInstance3D", true, false):
 		_govdeler.append(m)
+		if renk_ton != Color(1, 1, 1):
+			_tonla(m)
 	_flas = StandardMaterial3D.new()
 	_flas.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_flas.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -166,16 +186,61 @@ func _ready() -> void:
 	add_child(_cubuk)
 	_cubuk_gorunur = 1.0
 	_cubuk_mat.set_shader_parameter("gorunur", _cubuk_gorunur)
+	_seviye_etiket = Label3D.new()
+	_seviye_etiket.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_seviye_etiket.no_depth_test = true
+	_seviye_etiket.render_priority = 21
+	_seviye_etiket.font_size = 44
+	_seviye_etiket.pixel_size = 0.0055
+	_seviye_etiket.outline_size = 12
+	_seviye_etiket.text = ("Sv.%d" % seviye) if not boss else ("Sv.%d · %s" % [seviye, ad])
+	_seviye_etiket.position.y = _cubuk.position.y + 0.24
+	var f2 = load("res://assets/font/Rajdhani-Bold.ttf")
+	if f2:
+		_seviye_etiket.font = f2
+	add_child(_seviye_etiket)
+	seviye_rengi_guncelle()
 	if _etiket:
-		_etiket.position.y = _cubuk.position.y + 0.32
+		_etiket.position.y = _cubuk.position.y + 0.5
 	# Yerden çıkış
 	_durum = "dogus"
-	var dogus_anim := "Spawn_Ground_Skeletons" if anim.has_animation("Spawn_Ground_Skeletons") else "Idle"
-	anim.play(dogus_anim)
-	anim.speed_scale = 1.4
+	_cal("Idle")
+	anim.speed_scale = 1.0
+	model.position.y = -1.9 * model.scale.y
+	var tw0 := create_tween()
+	tw0.tween_property(model, "position:y", 0.0, 0.9 if not boss else 1.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_zaman = 1.1 if not boss else 1.6
 	Efekt.parcacik(global_position + Vector3(0, 0.2, 0), 14, Color(0.35, 0.3, 0.27, 0.8), 1.0, 2.5, -3.0, 0.7, 50.0, true, false, Vector3(0.5, 0.1, 0.5), 1.0)
 	_saldiri_bekleme = randf_range(0.3, 1.0)
+
+
+## Seviye yazısının rengi: gri = senden 6+ seviye düşük (tecrübe/eşya yok), kırmızı = çok güçlü
+func seviye_rengi_guncelle() -> void:
+	if _seviye_etiket == null or kahraman == null:
+		return
+	var fark: int = int(kahraman.seviye) - seviye
+	var r := Color(0.95, 0.92, 0.85)
+	if fark >= 6:
+		r = Color(0.55, 0.55, 0.55)
+	elif fark <= -5:
+		r = Color(1.0, 0.25, 0.2)
+	elif fark <= -2:
+		r = Color(1.0, 0.6, 0.25)
+	_seviye_etiket.modulate = r
+
+
+func _tonla(m: MeshInstance3D) -> void:
+	if m.mesh == null:
+		return
+	for i in m.mesh.get_surface_count():
+		var asil := m.get_active_material(i)
+		if asil is StandardMaterial3D:
+			var anahtar := "%d_%s" % [asil.get_instance_id(), renk_ton.to_html()]
+			if not _ton_cache.has(anahtar):
+				var yeni: StandardMaterial3D = asil.duplicate()
+				yeni.albedo_color = asil.albedo_color * renk_ton
+				_ton_cache[anahtar] = yeni
+			m.set_surface_override_material(i, _ton_cache[anahtar])
 
 
 func _physics_process(dt: float) -> void:
@@ -211,7 +276,7 @@ func _physics_process(dt: float) -> void:
 	if ana and ana.mod == "bolge":
 		if ana.koyde_mi():
 			aggro = false
-		elif not aggro and mesafe < (20.0 if boss else 14.0):
+		elif not aggro and mesafe < (20.0 if boss else 13.0):
 			aggro = true
 	match _durum:
 		"kovala":
@@ -236,10 +301,10 @@ func _physics_process(dt: float) -> void:
 			velocity = istenen.limit_length(1.0) * hiz * (0.4 if _yavas > 0 else 1.0) + _itme
 			if istenen.length() > 0.1:
 				_don(istenen)
-				_oynat("Running_C" if (tur == "haydut" or elit) and anim.has_animation("Running_C") else "Walking_D_Skeletons", clampf(velocity.length() / 3.0, 0.7, 1.7))
+				_oynat("Running_C" if (tur == "haydut" or elit) and _var("Running_C") else "Walking_D_Skeletons", clampf(velocity.length() / 3.0, 0.7, 1.7))
 			else:
 				_don(yon)
-				_oynat("Idle_Combat" if anim.has_animation("Idle_Combat") else "Idle", 1.0)
+				_oynat("Idle_Combat" if _var("Idle_Combat") else "Idle", 1.0)
 		"saldiri":
 			velocity = _itme
 			_don(yon)
@@ -259,7 +324,7 @@ func _physics_process(dt: float) -> void:
 			if _zaman <= 0:
 				_durum = "kovala"
 	move_and_slide()
-	global_position.y = 0.0
+	global_position.y = ana.zemin_y(global_position.x, global_position.z) if ana else 0.0
 
 
 func _don(y: Vector3) -> void:
@@ -270,11 +335,22 @@ func _don(y: Vector3) -> void:
 
 
 func _oynat(a: String, h := 1.0) -> void:
-	if not anim.has_animation(a):
-		a = "Idle"
-	if anim.current_animation != a:
-		anim.play(a, 0.15)
+	var g: String = ANIM.get(a, a)
+	if not anim.has_animation(g):
+		g = "Idle"
+	if anim.current_animation != g:
+		anim.play(g, 0.15)
 	anim.speed_scale = h
+
+
+func _var(a: String) -> bool:
+	return anim.has_animation(ANIM.get(a, a))
+
+
+func _cal(a: String, gecis := -1.0) -> void:
+	var g: String = ANIM.get(a, a)
+	if anim.has_animation(g):
+		anim.play(g, gecis)
 
 
 func _ayrisma() -> Vector3:
@@ -298,7 +374,7 @@ func _yakin_saldiri() -> void:
 	var a := "1H_Melee_Attack_Chop" if randf() < 0.6 else "1H_Melee_Attack_Slice_Diagonal"
 	if boss:
 		a = "2H_Melee_Attack_Chop"
-	anim.play(a, 0.08)
+	_cal(a, 0.08)
 	anim.speed_scale = 1.0 if not boss else 0.8
 	_zaman = 1.05 if not boss else 1.4
 	_vurus_zamani = 0.5 if not boss else 0.8
@@ -309,7 +385,7 @@ func _yakin_saldiri() -> void:
 
 func _buyu_saldirisi(yon: Vector3) -> void:
 	_durum = "saldiri"
-	anim.play("Spellcast_Shoot", 0.08)
+	_cal("Spellcast_Shoot", 0.08)
 	anim.speed_scale = 1.0
 	_zaman = 0.9
 	_vurus_zamani = -1
@@ -341,7 +417,7 @@ func _boss_dusun(dt: float, mesafe: float) -> void:
 		_boss_yetenek = randf_range(7.0, 9.0)
 		# alev halkası: etrafında uyarı, sonra patlama
 		_durum = "saldiri"
-		anim.play("2H_Melee_Attack_Spin" if anim.has_animation("2H_Melee_Attack_Spin") else "Taunt", 0.1)
+		_cal("2H_Melee_Attack_Spin" if _var("2H_Melee_Attack_Spin") else "Taunt", 0.1)
 		anim.speed_scale = 0.7
 		_zaman = 1.6
 		_vurus_zamani = -1
@@ -387,7 +463,7 @@ func hasar_al(miktar: float, kritik: bool, kaynak: Vector3, itme: float) -> void
 	if not boss and _durum != "saldiri" and itme >= 2.5:
 		_durum = "sersem"
 		_zaman = 0.28
-		anim.play("Hit_A" if randf() < 0.5 else "Hit_B", 0.05)
+		_cal("Hit_A" if randf() < 0.5 else "Hit_B", 0.05)
 		anim.speed_scale = 1.6
 
 
@@ -400,7 +476,7 @@ func _ol() -> void:
 	velocity = Vector3.ZERO
 	for m in _govdeler:
 		m.material_overlay = null
-	anim.play("Death_A" if randf() < 0.5 else "Death_B", 0.05)
+	_cal("Death_A" if randf() < 0.5 else "Death_B", 0.05)
 	anim.speed_scale = 1.3
 	Efekt.olum_kulu(global_position)
 	Ses.cal("olum", -4.0)
