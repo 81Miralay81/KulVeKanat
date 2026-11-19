@@ -26,16 +26,39 @@ static func yap(model: String, anim: String, boyut: Vector2i, sakla: Array = [],
 			var ust := n.get_parent()
 			if ust is BoneAttachment3D and ust.name.begins_with("handslot") and not n.name in sakla:
 				n.visible = false
-	if "__yay__" in sakla:
-		var el := m.find_child("handslot_r", true, false)
-		if el:
-			el.add_child(Esya.yay_modeli())
+	var el: Node3D = m.find_child("handslot_r", true, false)
+	var bilgi := {}
+	for snf in Sinif.VERI:
+		if Sinif.VERI[snf]["model"] == model:
+			bilgi = Sinif.VERI[snf]
+	if el and bilgi.get("gercekci", false):
+		el.scale = Vector3.ONE
+		var w := Esya.model_olustur(bilgi.get("varsayilan", ""))
+		if w:
+			var yay: bool = bilgi.get("varsayilan", "") == "yay"
+			w.scale = Vector3.ONE * (0.75 if yay else 0.5)
+			w.rotation_degrees = Vector3(0, 90, 0) if yay else Vector3(90, 0, 0)
+			el.add_child(w)
+		var sol: Node3D = m.find_child("handslot_l", true, false)
+		if sol and bilgi.has("varsayilan_kalkan"):
+			sol.scale = Vector3.ONE
+			var k := Esya.model_olustur(bilgi["varsayilan_kalkan"])
+			k.scale = Vector3.ONE * 0.55
+			k.rotation_degrees = Vector3(-90, 0, 0)
+			sol.add_child(k)
+		olcek = -1.0   # gerçekçi model: kamera tüm boyu görsün
+	elif "__yay__" in sakla and el:
+		el.add_child(Esya.yay_modeli())
 	var ap: AnimationPlayer = m.find_child("AnimationPlayer", true, false)
 	if ap and ap.has_animation(anim):
 		ap.get_animation(anim).loop_mode = Animation.LOOP_LINEAR
 		ap.play(anim)
 	var kam := Camera3D.new()
-	kam.position = Vector3(0, 1.35 * olcek, 3.6 * olcek)
+	if olcek < 0:
+		kam.position = Vector3(0, 1.15, 3.9)
+		olcek = 0.95
+	else:
+		kam.position = Vector3(0, 1.35 * olcek, 3.6 * olcek)
 	kam.fov = 34
 	kok.add_child(kam)
 	kam.look_at(Vector3(0, 1.0 * olcek, 0))

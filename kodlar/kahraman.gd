@@ -58,7 +58,17 @@ const BEKLEME := {"yetenek1": 8.0, "yetenek2": 5.0, "yetenek3": 3.5, "yetenek4":
 const MANA := {"yetenek1": 35.0, "yetenek2": 30.0, "yetenek3": 15.0, "yetenek4": 50.0}
 const ACILMA := {"yetenek1": 1, "yetenek3": 2, "yetenek2": 3, "yetenek4": 5}
 
-const DONGU_ANIMLARI := ["Idle", "2H_Melee_Idle", "Running_A", "Running_B", "2H_Melee_Attack_Spinning", "Walking_A"]
+const DONGU_ANIMLARI := ["Idle", "2H_Melee_Idle", "Running_A", "Running_B", "2H_Melee_Attack_Spinning", "Walking_A",
+	"Sprint", "Jog_Fwd", "Sword_Idle", "Spell_Simple_Idle", "Walk"]
+## KayKit hareket adı -> gerçekçi manken hareket adı (Quaternius kütüphanesi)
+const GERCEKCI_ANIM := {
+	"Running_A": "Sprint", "Idle": "Idle", "2H_Melee_Idle": "Sword_Idle",
+	"2H_Melee_Attack_Slice": "Sword_Attack", "2H_Melee_Attack_Chop": "Sword_Attack",
+	"2H_Melee_Attack_Spinning": "Sword_Attack", "2H_Melee_Attack_Spin": "Sword_Attack",
+	"Dodge_Forward": "Roll", "Spellcast_Raise": "Spell_Simple_Shoot", "Spellcast_Shoot": "Spell_Simple_Shoot",
+	"Spellcast_Long": "Spell_Simple_Shoot", "2H_Ranged_Shoot": "Pistol_Shoot", "Throw": "Spell_Simple_Shoot",
+	"Death_A": "Death01", "Death_B": "Death01", "Hit_A": "Hit_Chest", "Cheer": "Spell_Simple_Shoot",
+}
 
 
 func _ready() -> void:
@@ -76,7 +86,7 @@ func _ready() -> void:
 	bilgi = Sinif.VERI[sinif]
 	model = load("res://assets/karakter/%s.glb" % bilgi["model"]).instantiate()
 	add_child(model)
-	model.scale = Vector3.ONE * 1.05
+	model.scale = Vector3.ONE * (1.12 if bilgi.get("gercekci", false) else 1.05)
 	anim = model.find_child("AnimationPlayer", true, false)
 	for ad in DONGU_ANIMLARI + [bilgi["bekleme_anim"]]:
 		if anim.has_animation(ad):
@@ -97,7 +107,7 @@ func _ready() -> void:
 	kanat = Kanat.new()
 	kanat.renk = bilgi["kanat"]
 	model.add_child(kanat)
-	kanat.position = Vector3(0, 1.32, -0.28)
+	kanat.position = Vector3(0, 1.32, -0.28) if not bilgi.get("gercekci", false) else Vector3(0, 1.38, -0.2)
 
 	var isik := OmniLight3D.new()       # karakterin etrafını hafif aydınlatan sıcak ışık
 	isik.light_color = Color(1.0, 0.6, 0.3)
@@ -384,18 +394,23 @@ func _physics_process(dt: float) -> void:
 	global_position.y = 0.0
 	# model yönünü yumuşak çevir (KayKit modelleri +Z'ye bakar)
 	var hedef_aci := atan2(bakis.x, bakis.z)
-	model.rotation.y = lerp_angle(model.rotation.y, hedef_aci, minf(1.0, dt * 16.0))
+	if durum == "kasirga" and bilgi.get("gercekci", false):
+		model.rotation.y += dt * 16.0
+	else:
+		model.rotation.y = lerp_angle(model.rotation.y, hedef_aci, minf(1.0, dt * 16.0))
 
 
 func _hareket_animasyonu(hiz_su_an: float, hiz_max: float) -> void:
 	if hiz_su_an > 0.4:
 		# animasyon hızı gerçek yürüme hızına eşitlenir: ayaklar kaymaz
-		_oynat("Running_A", 0.12, clampf(hiz_su_an / KOSU_ANIM_HIZI, 0.6, 1.6))
+		_oynat("Running_A", 0.12, clampf(hiz_su_an / (6.4 if bilgi.get("gercekci", false) else KOSU_ANIM_HIZI), 0.6, 1.6))
 	else:
 		_oynat(bilgi["bekleme_anim"], 0.18, 1.0)
 
 
 func _oynat(ad: String, gecis := 0.1, hiz := 1.0, bastan := false) -> void:
+	if not anim.has_animation(ad) and GERCEKCI_ANIM.has(ad):
+		ad = GERCEKCI_ANIM[ad]
 	if not anim.has_animation(ad):
 		ad = "Idle"
 	if bastan or anim.current_animation != ad:
@@ -751,7 +766,7 @@ func _ol() -> void:
 	if is_instance_valid(_kasirga_efekt):
 		_kasirga_efekt.queue_free()
 	kanat.ac(0.0)
-	anim.play("Death_A", 0.1)
+	_oynat("Death_A", 0.1)
 	oldu.emit()
 
 
@@ -1016,11 +1031,9 @@ var _el_sol: Node3D
 
 func gorunum_guncelle() -> void:
 	## Takılı silah elinde, (Muhafız için) kalkan sol kolunda görünür.
-	var iskelet: Skeleton3D = model.find_child("Skeleton3D", true, false)
-	if iskelet == null:
-		return
-	var sag := iskelet.find_child("handslot_r", false, false)
-	var sol := iskelet.find_child("handslot_l", false, false)
+	var gercekci: bool = bilgi.get("gercekci", false)
+	var sag: Node3D = model.find_child("handslot_r", true, false)
+	var sol: Node3D = model.find_child("handslot_l", true, false)
 	if is_instance_valid(_el_sag):
 		_el_sag.queue_free()
 	if is_instance_valid(_el_sol):
@@ -1034,12 +1047,23 @@ func gorunum_guncelle() -> void:
 			if c is MeshInstance3D:
 				c.visible = yeni == null
 		if yeni:
+			if gercekci:
+				sag.scale = Vector3.ONE
+				var yay := str(silah.get("model", bilgi.get("varsayilan", ""))) == "yay"
+				yeni.scale = Vector3.ONE * (0.75 if yay else 0.5)
+				yeni.rotation_degrees = Vector3(0, 90, 0) if yay else Vector3(90, 0, 0)
 			sag.add_child(yeni)
 			_el_sag = yeni
 	var kalkan: Dictionary = esyalar.get("Zırh", {})
-	var km := str(kalkan.get("model", ""))
-	if sol and km.begins_with("shield") and kalkan.get("sinif", "") == sinif:
+	var km := str(kalkan.get("model", "")) if kalkan.get("sinif", "") == sinif else ""
+	if km == "" and bilgi.has("varsayilan_kalkan"):
+		km = bilgi["varsayilan_kalkan"]
+	if sol and km.begins_with("shield"):
 		var k := Esya.model_olustur(km)
 		if k:
+			if gercekci:
+				sol.scale = Vector3.ONE
+				k.scale = Vector3.ONE * 0.55
+				k.rotation_degrees = Vector3(-90, 0, 0)
 			sol.add_child(k)
 			_el_sol = k

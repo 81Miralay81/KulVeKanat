@@ -1,5 +1,14 @@
 # Sürüm notları
 
+## 0.4.0 - Gerçek oranlı kahramanlar
+- Üç kahraman yeniden yapıldı, artık gerçek insan oranlarında:
+  - **Kılıç Muhafızı:** gladyatör; ızgaralı miğfer, kırmızı tepelik, kol zırhı, omuzluk, deri etek, kalkan.
+  - **Gölge Avcı:** elf okçu; sarı saç, sivri kulaklar, yeşil pelerin, ok kılıfı, yay.
+  - **Kül Büyücü:** insan büyücü; beyaz sakal, mavi cüppe, parlayan kolye, asa.
+- Gövde ve 46 hareket Quaternius Universal Animation Library'den (CC0); zırh, miğfer, saç, yüz ve kıyafetler `marka/karakter_yap.py` ile kodla üretildi.
+- Kor Kasırgası'nda gladyatör kendi etrafında döner.
+- Neden: Çizgi film tarzı tombul karakterler yerine daha gerçekçi görünüm istendi.
+
 ## 0.3.0 - Açık dünya
 - **Kül Ovaları:** 136 x 136 m açık bölge; dağlarla çevrili, ağaçlı, kül lekeli. Düşmanlar dalga yerine sürüler halinde dolaşır; yaklaşınca saldırır, temizlenen sürü bir süre sonra yeniden gelir.
 - **Son Sığınak köyü:** bölgenin ortasında; demirhane, meyhane, pazar, kilise, evler, değirmen, kuyu. Esnaflar (Demirci Haldun, Simyacı Nevra, Tüccar Kerem) köyde duruyor: yanına git, "KONUŞ" (telefonda düğme, bilgisayarda E). Köyde düşmanlar peşini bırakır.

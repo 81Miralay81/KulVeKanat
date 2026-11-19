@@ -57,5 +57,6 @@ Oyun kolu (Xbox tipi) da çalışır.
 ## Teşekkürler ve lisanslar
 
 - 3B modeller ve animasyonlar: [KayKit](https://kaylousberg.itch.io/) (Kay Lousberg) - Adventurers, Skeletons, Dungeon Remastered ve Medieval Hexagon paketleri, **CC0** lisanslı.
+- Kahraman gövdesi ve hareketleri: [Quaternius](https://quaternius.com) Universal Animation Library, **CC0**. Zırh, saç, yüz ve kıyafetler `marka/karakter_yap.py` ile üretildi.
 - Yazı tipleri: Cinzel ve Rajdhani, **SIL Open Font License** (Google Fonts).
 - Sesler ve müzik bu proje için kodla üretildi (`marka/sesler.py`).
