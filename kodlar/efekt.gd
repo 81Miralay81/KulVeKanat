@@ -12,6 +12,11 @@ static var _malzemeler := {}
 static var _parca_doku: Texture2D
 static var _sahne: Node3D   ## efektlerin ekleneceği dünya düğümü
 static var mobil := false
+static var ek_isik := true      ## telefonda/düşük kalitede ek ışıklar kapalı (en büyük donma sebebi)
+
+
+static func isik_var() -> bool:
+	return ek_isik and not mobil
 
 const PARLAK_SHADER := """
 shader_type spatial;
@@ -287,6 +292,8 @@ static func isinma(konum: Vector3) -> void:
 
 
 static func isik_flas(konum: Vector3, renk: Color, enerji := 6.0, menzil := 7.0, sure := 0.35) -> void:
+	if not isik_var():
+		return
 	var l := OmniLight3D.new()
 	l.light_color = renk
 	l.light_energy = enerji
@@ -456,6 +463,7 @@ static func meteor(hedef: Vector3, gecikme: float, bitince: Callable) -> void:
 	iz.draw_pass_1 = q
 	top.add_child(iz)
 	var isik := OmniLight3D.new()
+	isik.visible = isik_var()
 	isik.light_color = ATES
 	isik.light_energy = 5.0
 	isik.omni_range = 6.0

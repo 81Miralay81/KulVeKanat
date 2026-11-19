@@ -155,6 +155,7 @@ static func insa(kok: Node3D, mobil: bool) -> void:
 
 static func _isik(kok: Node3D, p: Vector3) -> void:
 	var l := OmniLight3D.new()
+	l.visible = Efekt.isik_var()
 	l.light_color = Color(1.0, 0.55, 0.22)
 	l.light_energy = 2.2
 	l.omni_range = 9.0

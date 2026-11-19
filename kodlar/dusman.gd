@@ -98,6 +98,7 @@ func _ready() -> void:
 	if elit or boss:
 		var renk := Color(1.0, 0.35, 0.05) if boss else Color(1.0, 0.75, 0.2)
 		var isik := OmniLight3D.new()
+		isik.visible = Efekt.isik_var()
 		isik.light_color = renk
 		isik.light_energy = 2.0 if boss else 1.0
 		isik.omni_range = 5.0 if boss else 3.0

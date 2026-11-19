@@ -68,7 +68,8 @@ func _process(dt: float) -> void:
 	_seri_sure -= dt
 	if _seri_sure <= 0:
 		_seri = 0
-	queue_redraw()
+	if not Oyun.mobil or Engine.get_process_frames() % 2 == 0:
+		queue_redraw()
 
 
 func _yazi(p: Vector2, metin: String, boy: int, renk: Color, hiza := HORIZONTAL_ALIGNMENT_LEFT, genislik := -1.0, font: Font = null, golge := true) -> void:

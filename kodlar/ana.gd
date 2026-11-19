@@ -130,7 +130,7 @@ func _ortam() -> void:
 	env.background_color = Color(0.02, 0.015, 0.025)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.36, 0.28, 0.27)
-	env.ambient_light_energy = 0.28
+	env.ambient_light_energy = 0.28 if not mobil else 0.6
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_exposure = 1.05
 	env.glow_enabled = true
@@ -285,7 +285,7 @@ func _dalga_isle(dt: float) -> void:
 				mesaj_goster("Kor Avcısı Garran geliyor!", Color(1, 0.4, 0.15), false)
 		return
 	_dogus_sayac -= dt
-	var sinir := 24 if mobil else 34
+	var sinir := 16 if mobil else 30
 	if _dogus_sayac <= 0 and not _sira.is_empty() and _canli < sinir:
 		_dogus_sayac = 0.35
 		var s: Array = _sira.pop_front()
@@ -294,7 +294,7 @@ func _dalga_isle(dt: float) -> void:
 
 func _dalga_listesi(n: int) -> Array:
 	var liste := []
-	var sayi := 6 + n * 3
+	var sayi := mini(6 + n * 3, 30)
 	if n % 10 == 0:
 		sayi = 8
 	for i in sayi:
@@ -366,8 +366,7 @@ func _dusman_oldu(d: Dusman) -> void:
 		mesaj_goster("KOR AVCISI GARRAN YENİLDİ!", Color(1, 0.6, 0.2), true)
 		for i in 4:
 			_ganimet("esya", p + Vector3(randf_range(-2, 2), 0, randf_range(-2, 2)), 0, 3 if i == 0 else 2)
-		for i in 6:
-			_ganimet("altin", p + Vector3(randf_range(-2.5, 2.5), 0, randf_range(-2.5, 2.5)), 20 + dalga * 4)
+		altin_ver(6 * (20 + dalga * 4), p)
 		kamera_sars(1.0)
 		Efekt.kanat_tuyu_patlamasi(p)
 		boss = null
@@ -376,13 +375,23 @@ func _dusman_oldu(d: Dusman) -> void:
 		_ganimet("esya", p, 0, 1)
 	elif randf() < 0.07:
 		_ganimet("esya", p, 0, 0)
-	if randf() < 0.45:
-		_ganimet("altin", p + Vector3(randf_range(-0.6, 0.6), 0, randf_range(-0.6, 0.6)), 3 + dalga * 2 + randi() % 4)
+	if randf() < 0.5:
+		altin_ver(3 + dalga * 2 + randi() % 4, p)
 	if randf() < 0.04:
 		_ganimet("iksir", p, 0)
 
 
 func _ganimet(tur: String, p: Vector3, miktar := 0, en_az := 0) -> void:
+	if tur == "altin":
+		altin_ver(miktar, p)
+		return
+	# yerde en fazla 15 eşya: fazlası en eskisinden başlayarak çantaya gider
+	var yerdekiler := get_tree().get_nodes_in_group("ganimet")
+	if yerdekiler.size() >= 15:
+		var eski: Node = yerdekiler[0]
+		if eski.tur == "esya":
+			kahraman.esya_al(eski.esya)
+		eski.queue_free()
 	var g := Ganimet.new()
 	g.tur = tur
 	g.miktar = miktar
@@ -499,39 +508,42 @@ func _menuleri_kur() -> void:
 	_menu_katman.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(_menu_katman)
 
-	# Ana menü
+	# Ana menü: tek ekranda üç karakter kartı (seç ve oyna) + alt düğmeler
 	_menu = _kutu("AnaMenu")
 	var v: VBoxContainer = _menu.find_child("Liste", true, false)
-	var logo := TextureRect.new()
-	logo.texture = load("res://assets/logo_mark.png")
-	logo.custom_minimum_size = Vector2(150, 150)
-	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	v.add_child(logo)
-	v.add_child(_baslik("KÜL VE KANAT", 76))
-	v.add_child(_yazi_etiket("Kanatix  ·  1. Bölüm: Kül Ovaları", 22, Color(0.85, 0.75, 0.6)))
-	if not _kayit.is_empty():
-		var d := _dugme("DEVAM ET", _basla)
-		d.custom_minimum_size = Vector2(420, 72)
-		v.add_child(d)
-		v.add_child(_yazi_etiket("%s  ·  Seviye %d  ·  Dalga %d" % [Sinif.VERI[sinif]["ad"], kahraman.seviye, int(_kayit.get("dalga", 1))], 19, Color(1, 0.8, 0.5)))
-	v.add_child(_dugme("KARAKTER SEÇ" if not _kayit.is_empty() else "YENİ OYUN", _secim_ac))
-	v.add_child(_kalite_dugmesi())
-	v.add_child(_dugme("KONTROLLER", func():
+	v.add_theme_constant_override("separation", 8)
+	v.add_child(_baslik("KÜL VE KANAT", 58))
+	v.add_child(_yazi_etiket("Kanatix  ·  1. Bölüm: Kül Ovaları  ·  Karakterine dokun ve oyna", 18, Color(0.85, 0.75, 0.6)))
+	var kartlar := HBoxContainer.new()
+	kartlar.add_theme_constant_override("separation", 16)
+	kartlar.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_child(kartlar)
+	for snf in Sinif.LISTE:
+		kartlar.add_child(_sinif_karti(snf))
+	var alt_sira := HBoxContainer.new()
+	alt_sira.alignment = BoxContainer.ALIGNMENT_CENTER
+	alt_sira.add_theme_constant_override("separation", 12)
+	v.add_child(alt_sira)
+	var kd := _kalite_dugmesi()
+	kd.custom_minimum_size = Vector2(250, 54)
+	alt_sira.add_child(kd)
+	var kontrol := _dugme("KONTROLLER", func():
 		var y: Label = _menu.find_child("Yardim", true, false)
-		y.visible = not y.visible))
+		y.visible = not y.visible)
+	kontrol.custom_minimum_size = Vector2(250, 54)
+	alt_sira.add_child(kontrol)
 	if not mobil:
-		v.add_child(_dugme("ÇIKIŞ", func(): get_tree().quit()))
-	var yardim := _yazi_etiket("", 19, Color(0.9, 0.85, 0.75))
+		var cikis := _dugme("ÇIKIŞ", func(): get_tree().quit())
+		cikis.custom_minimum_size = Vector2(200, 54)
+		alt_sira.add_child(cikis)
+	var yardim := _yazi_etiket("", 17, Color(0.9, 0.85, 0.75))
 	yardim.name = "Yardim"
 	yardim.visible = false
 	if mobil:
-		yardim.text = "Sol yarı: parmağını koyduğun yerden yürü (joystick)\nBüyük düğme: basılı tut, sürekli saldır\nEtraftaki 4 düğme: yetenekler  ·  Üstteki kanat: Kanat Açılımı\nKırmızı şişe: iksir  ·  Sağ üst: duraklat"
+		yardim.text = "Sol yarı: parmağını koyduğun yerden yürü  ·  Büyük düğme: basılı tut, saldır\nEtraftaki düğmeler: yetenekler  ·  Altın kanat: son vuruş  ·  Sağ üst: çanta, duraklat, harita"
 	else:
-		yardim.text = "W A S D: yürü  ·  Sol tık / J: saldır (basılı tut)\nSağ tık / 1: Kor Kasırgası  ·  2: Yer Yarma  ·  Boşluk / 3: Kanat Atılımı\n4: Meteor Yağmuru  ·  R: Kanat Açılımı  ·  Q: İksir  ·  ESC: duraklat\nOyun kolu da çalışır"
+		yardim.text = "W A S D: yürü  ·  Sol tık / J: saldır  ·  Sağ tık / 1, 2, Boşluk / 3, 4: yetenekler\nR: son vuruş  ·  Q: iksir  ·  I: envanter  ·  M: harita  ·  ESC: duraklat  ·  Oyun kolu da çalışır"
 	v.add_child(yardim)
-	var rekor := _yazi_etiket("En iyi: Dalga %d  ·  Seviye %d" % [int(Oyun.kayit["en_iyi_dalga"]), int(Oyun.kayit["en_iyi_seviye"])], 18, Color(0.75, 0.7, 0.6))
-	v.add_child(rekor)
 	_guncelleme_kutu = VBoxContainer.new()
 	_guncelleme_kutu.visible = false
 	v.add_child(_guncelleme_kutu)
@@ -566,23 +578,34 @@ func _menuleri_kur() -> void:
 	_menu_katman.add_child(kasaba)
 	_secim_kur()
 
-	# Duraklatma
+	# Duraklatma: iki sütunlu düğmeler, telefon ekranına sığar
 	_duraklat_menu = _kutu("Duraklat")
 	v = _duraklat_menu.find_child("Liste", true, false)
-	v.add_child(_baslik("DURAKLATILDI", 54))
-	var esyalar := _yazi_etiket("", 18)
+	v.add_theme_constant_override("separation", 10)
+	v.add_child(_baslik("DURAKLATILDI", 44))
+	var esyalar := _yazi_etiket("", 16)
 	esyalar.name = "Esyalar"
 	v.add_child(esyalar)
-	v.add_child(_dugme("DEVAM", _duraklat_ac_kapa))
-	v.add_child(_dugme("ENVANTER", func():
-		_duraklat_ac_kapa()
-		_envanter_ac()))
-	v.add_child(_dugme("SON SIĞINAK (KASABA)", func():
-		_duraklat_ac_kapa()
-		_kasaba_ac()))
-	v.add_child(_kalite_dugmesi())
-	v.add_child(_dugme("YENİDEN BAŞLA", func(): _yeniden(true)))
-	v.add_child(_dugme("ANA MENÜ", func(): _yeniden(false)))
+	var izgara := GridContainer.new()
+	izgara.columns = 2
+	izgara.add_theme_constant_override("h_separation", 14)
+	izgara.add_theme_constant_override("v_separation", 10)
+	v.add_child(izgara)
+	var dugmeler := [
+		_dugme("DEVAM", _duraklat_ac_kapa),
+		_dugme("ENVANTER", func():
+			_duraklat_ac_kapa()
+			_envanter_ac()),
+		_dugme("SON SIĞINAK", func():
+			_duraklat_ac_kapa()
+			_kasaba_ac()),
+		_kalite_dugmesi(),
+		_dugme("KARAKTER DEĞİŞTİR", func(): _yeniden(false)),
+		_dugme("ANA MENÜ", func(): _yeniden(false)),
+	]
+	for d in dugmeler:
+		d.custom_minimum_size = Vector2(330, 60)
+		izgara.add_child(d)
 
 	# Ölüm
 	_olum_menu = _kutu("Olum")
@@ -631,13 +654,8 @@ func _duraklat_ac_kapa() -> void:
 	Oyun.tum_girdileri_birak()
 	if p:
 		var l: Label = _duraklat_menu.find_child("Esyalar", true, false)
-		var satirlar := ["Seviye %d  ·  Dalga %d  ·  %d altın  ·  %d düşman  ·  FPS %d" % [kahraman.seviye, dalga, kahraman.altin, _oldurulen, Engine.get_frames_per_second()], ""]
-		for y in Esya.YUVALAR:
-			if kahraman.esyalar.has(y):
-				var e: Dictionary = kahraman.esyalar[y]
-				satirlar.append("%s: %s (%s)  %s" % [y, e["ad"], Esya.NADIRLIK[e["nadirlik"]]["ad"], Esya.ozet(e)])
-			else:
-				satirlar.append("%s: boş" % y)
+		var satirlar := ["%s  ·  Seviye %d  ·  Dalga %d  ·  %d altın  ·  FPS %d" % [Sinif.VERI[sinif]["ad"], kahraman.seviye, dalga, kahraman.altin, Engine.get_frames_per_second()],
+			"Hasar %d  ·  Can %d  ·  Kritik %%%d  ·  Zırh %%%d  ·  Ayrıntılar için ENVANTER" % [int(kahraman.deger("hasar")), int(kahraman.deger("can")), int(kahraman.deger("kritik")), int(kahraman.deger("zirh"))]]
 		l.text = "\n".join(satirlar)
 
 
@@ -704,27 +722,30 @@ func _kalite_uygula() -> void:
 			_env.fog_enabled = false
 			_ay.shadow_enabled = false
 			vp.msaa_3d = Viewport.MSAA_DISABLED
-			vp.scaling_3d_scale = 0.75
+			vp.scaling_3d_scale = 0.6 if mobil else 0.75
 			Efekt.kalite = 0.5
-			Efekt.sinir = 40
+			Efekt.sinir = 30
+			Efekt.ek_isik = false
 		1:
 			_env.ssao_enabled = false
 			_env.fog_enabled = true
-			_ay.shadow_enabled = true
+			_ay.shadow_enabled = not mobil
 			_ay.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 			vp.msaa_3d = Viewport.MSAA_2X if not mobil else Viewport.MSAA_DISABLED
-			vp.scaling_3d_scale = 1.0
+			vp.scaling_3d_scale = 0.75 if mobil else 1.0
 			Efekt.kalite = 0.8
-			Efekt.sinir = 60
+			Efekt.sinir = 45 if mobil else 60
+			Efekt.ek_isik = true
 		2:
 			_env.ssao_enabled = not mobil
 			_env.fog_enabled = true
 			_ay.shadow_enabled = true
 			_ay.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
-			vp.msaa_3d = Viewport.MSAA_4X if not mobil else Viewport.MSAA_2X
-			vp.scaling_3d_scale = 1.0
+			vp.msaa_3d = Viewport.MSAA_4X if not mobil else Viewport.MSAA_DISABLED
+			vp.scaling_3d_scale = 0.9 if mobil else 1.0
 			Efekt.kalite = 1.0
-			Efekt.sinir = 90
+			Efekt.sinir = 60 if mobil else 90
+			Efekt.ek_isik = true
 
 
 
@@ -814,16 +835,16 @@ func _sinif_karti(s: String) -> Control:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
 	panel.add_child(v)
-	panel.custom_minimum_size = Vector2(300, 0)
-	var portre := Portre.yap(b["model"], b["bekleme_anim"], Vector2i(240, 210), b["sakla"], b["kanat"])
+	panel.custom_minimum_size = Vector2(290, 0)
+	var portre := Portre.yap(b["model"], b["bekleme_anim"], Vector2i(220, 170), b["sakla"], b["kanat"])
 	portre.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(portre)
 	var ad := _baslik(b["ad"], 26, b["kanat"].lightened(0.3))
 	v.add_child(ad)
 	v.add_child(_yazi_etiket(b["rol"], 18, Color(0.9, 0.85, 0.75)))
-	var ac := _yazi_etiket(b["aciklama"], 15, Color(0.75, 0.7, 0.65))
+	var ac := _yazi_etiket(str(b["aciklama"]).replace("\n", " "), 14, Color(0.75, 0.7, 0.65))
 	ac.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	ac.custom_minimum_size = Vector2(270, 0)
+	ac.custom_minimum_size = Vector2(260, 0)
 	v.add_child(ac)
 	var puan := HBoxContainer.new()
 	puan.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -835,15 +856,19 @@ func _sinif_karti(s: String) -> Control:
 	var bilgi := "Kayıt yok: yeni karakter" if k.is_empty() else "Kayıt: Seviye %d  ·  Dalga %d" % [int(k.get("seviye", 1)), int(k.get("dalga", 1))]
 	v.add_child(_yazi_etiket(bilgi, 17, Color(1, 0.85, 0.5) if not k.is_empty() else Color(0.7, 0.68, 0.62)))
 	var oyna := _dugme("DEVAM ET" if not k.is_empty() else "OYNA", func():
+		if s == sinif:
+			_secim_menu.visible = false
+			_basla()
+			return
 		Oyun.secili_sinif = s
 		Oyun.dogrudan_basla = true
 		get_tree().reload_current_scene())
-	oyna.custom_minimum_size = Vector2(270, 60)
+	oyna.custom_minimum_size = Vector2(260, 56)
 	v.add_child(oyna)
 	if not k.is_empty():
 		var sil := Button.new()
 		sil.text = "SIFIRLA"
-		sil.custom_minimum_size = Vector2(250, 44)
+		sil.custom_minimum_size = Vector2(260, 38)
 		sil.add_theme_font_size_override("font_size", 20)
 		var onay := [false]
 		sil.pressed.connect(func():
@@ -860,3 +885,11 @@ func _sinif_karti(s: String) -> Control:
 
 func ganimet_birak(tur: String, p: Vector3, miktar := 0, en_az := 0) -> void:
 	_ganimet(tur, p, miktar, en_az)
+
+
+
+func altin_ver(miktar: int, p: Vector3) -> void:
+	## Altın yere düşmez, doğrudan kahramana geçer (telefonda yüzlerce yığın donma yapıyordu).
+	kahraman.altin += miktar
+	Efekt.hasar_yazisi(p + Vector3(0, 1.6, 0), "+%d" % miktar, Efekt.ALTIN)
+	Ses.cal("altin", -10.0)

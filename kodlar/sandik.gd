@@ -16,6 +16,7 @@ func _ready() -> void:
 	m.scale = Vector3.ONE * 1.25
 	_kapak = m.find_child("chest_gold_lid", true, false)
 	_isik = OmniLight3D.new()
+	_isik.visible = Efekt.isik_var()
 	_isik.light_color = Color(1.0, 0.8, 0.3)
 	_isik.light_energy = 1.4
 	_isik.omni_range = 3.5
@@ -47,8 +48,7 @@ func ac() -> void:
 	Efekt.parcacik(global_position + Vector3(0, 1.0, 0), 40, Efekt.ALTIN, 1.2, 6.0, -6.0, 0.25, 50.0)
 	Efekt.isik_flas(global_position + Vector3(0, 1.5, 0), Efekt.ALTIN, 6.0, 6.0, 0.6)
 	var k: Node = ana.kahraman
-	for i in randi_range(4, 7):
-		ana.ganimet_birak("altin", global_position + _rastgele(), 8 + ana.dalga * 3)
+	ana.altin_ver(randi_range(4, 7) * (8 + ana.dalga * 3), global_position)
 	if randf() < 0.45:
 		ana.ganimet_birak("iksir", global_position + _rastgele())
 	if randf() < 0.75:

@@ -47,6 +47,7 @@ func _ready() -> void:
 			m.add_child(alt)
 	if tur == "esya":     # altın yığınlarında ışık yok (çok ışık = yavaşlama)
 		var isik := OmniLight3D.new()
+		isik.visible = Efekt.isik_var()
 		isik.light_color = renk
 		isik.light_energy = 1.5
 		isik.omni_range = 3.0

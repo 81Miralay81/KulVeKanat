@@ -170,7 +170,8 @@ func _process(_dt: float) -> void:
 	if b != _son_boyut:
 		_son_boyut = b
 		_yerlesim()
-	queue_redraw()   # bekleme süreleri her karede güncellensin
+	if not Oyun.mobil or Engine.get_process_frames() % 2 == 0:
+		queue_redraw()   # bekleme süreleri güncellensin
 
 
 func _draw() -> void:

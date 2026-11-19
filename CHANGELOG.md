@@ -1,5 +1,13 @@
 # Sürüm notları
 
+## 0.2.1
+- Donma düzeltmeleri (özellikle telefon): telefonda ek ışıklar kapalı (meşale, sandık, eşya, mermi ışıkları; uyumluluk çiziminde her ışık ek bir çizim turu demek), 3B çözünürlük telefonda %75 (Düşük: %60), telefonda gölge kapalı (Yüksek hariç).
+- Altın artık yere düşmüyor, doğrudan sana geçiyor (yüzlerce altın yığını birikip oyunu yavaşlatıyordu). Yerde en fazla 15 eşya kalır, fazlası çantaya gider.
+- Bir dalgada en fazla 30 düşman (sonrası daha güçlü düşmanlarla zorlaşır); aynı anda ekranda telefonda 16, bilgisayarda 30 düşman.
+- Duraklatma menüsü iki sütun: telefonda tüm düğmeler görünüyor. "KARAKTER DEĞİŞTİR" eklendi.
+- Ana menü tek ekran: üç karakter kartı doğrudan seçilip oynanır.
+- Neden: Telefonda 24. dalgada FPS 24'e düşüyordu ve duraklatma menüsünün alt düğmeleri ekrana sığmıyordu.
+
 ## 0.2.0
 - **Karakter seçimi:** Kılıç Muhafızı, Gölge Avcı (arbalet, Çoklu Atış, Ok Yağmuru, Gölge Adımı, Zehir Bombası, Gölge Fırtınası) ve Kül Büyücü (Ateş Topu, Alev Halkası, Buz Fırtınası, Işınlanma, Meteor Yağmuru, Kül Kıyameti). Her sınıfın kendi kanat rengi var.
 - **Kayıt ve devam:** Her sınıfın ayrı kaydı var. Ana menüde "DEVAM ET" kaldığın dalgadan başlatır; seviye, eşya, çanta ve altın saklanır. Ana menüye dönünce, uygulama kapanınca ya da arka plana geçince otomatik kayıt. Ölünce ilerleme kaybolmaz, son kontrol noktasından (1, 6, 11. dalga...) devam edilir.

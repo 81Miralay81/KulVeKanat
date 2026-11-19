@@ -19,6 +19,7 @@ func _ready() -> void:
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(m)
 	var l := OmniLight3D.new()
+	l.visible = Efekt.isik_var()
 	l.light_color = Color(0.7, 0.3, 1.0)
 	l.light_energy = 2.0
 	l.omni_range = 3.5

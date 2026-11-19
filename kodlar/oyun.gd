@@ -1,7 +1,7 @@
 extends Node
 ## Genel oyun durumu: sürüm, girdiler (klavye, fare, dokunmatik), kayıt.
 
-const SURUM := "0.2.0"
+const SURUM := "0.2.1"
 const DEPO := "81Miralay81/KulVeKanat"
 
 ## Oyunun kullandığı eylemler (klavye tuşları aşağıda tanımlanır).
@@ -36,6 +36,8 @@ func _ready() -> void:
 			secili_sinif = arg.trim_prefix("--sinif=")
 	if "--otomatik-test" in OS.get_cmdline_user_args():
 		add_child(load("res://test/otomatik.gd").new())
+	if "--menu-test" in OS.get_cmdline_user_args():
+		add_child(load("res://test/menu.gd").new())
 	if "--boss-test" in OS.get_cmdline_user_args():
 		add_child(load("res://test/boss.gd").new())
 

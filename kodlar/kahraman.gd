@@ -543,6 +543,7 @@ func _kasirga_baslat() -> void:
 	kiv.draw_pass_1 = q
 	kok.add_child(kiv)
 	var l := OmniLight3D.new()
+	l.visible = Efekt.isik_var()
 	l.light_color = Efekt.ATES
 	l.light_energy = 4.0
 	l.omni_range = 8.0
@@ -929,6 +930,7 @@ func _buz_firtinasi() -> void:
 		h.position.y = 0.07
 		kok.add_child(h)
 		var l := OmniLight3D.new()
+		l.visible = Efekt.isik_var()
 		l.light_color = Color(0.5, 0.8, 1.0)
 		l.light_energy = 3.0
 		l.omni_range = 7.0

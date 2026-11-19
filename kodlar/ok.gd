@@ -26,6 +26,7 @@ func _ready() -> void:
 		m.mesh = s
 		m.material_override = Efekt.parlak_mat(Color(1.0, 0.6, 0.2), 4.0)
 		var l := OmniLight3D.new()
+		l.visible = Efekt.isik_var()
 		l.light_color = Efekt.ATES
 		l.light_energy = 2.0
 		l.omni_range = 4.0
