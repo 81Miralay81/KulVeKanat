@@ -1,0 +1,174 @@
+# Kül ve Kanat: her main gönderiminde Windows exe + Android APK derler ve sürüm olarak yayınlar.
+name: Derle
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GODOT_SURUM: "4.6.2"
+
+jobs:
+  derle:
+    runs-on: ubuntu-latest
+    outputs:
+      surum: ${{ steps.surum.outputs.v }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sürüm numarası
+        id: surum
+        run: |
+          V=$(grep -oP 'const SURUM := "\K[0-9.]+' kodlar/oyun.gd)
+          IFS=. read -r a b c <<< "$V"
+          KOD=$((a*10000 + b*100 + c))
+          echo "v=$V" >> "$GITHUB_OUTPUT"
+          sed -i "s|^version/code=.*|version/code=$KOD|; s|^version/name=.*|version/name=\"$V\"|; s|^application/file_version=.*|application/file_version=\"$V.0\"|; s|^application/product_version=.*|application/product_version=\"$V.0\"|" export_presets.cfg
+          echo "Sürüm $V (kod $KOD)"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Godot önbelleği
+        id: godot_onbellek
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_SURUM }}
+
+      - name: Godot ve dışa aktarma şablonlarını indir
+        if: steps.godot_onbellek.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot ~/.local/share/godot/export_templates/${GODOT_SURUM}.stable
+          cd ~/godot
+          curl -sSL -o g.zip "https://github.com/godotengine/godot/releases/download/${GODOT_SURUM}-stable/Godot_v${GODOT_SURUM}-stable_linux.x86_64.zip"
+          unzip -q g.zip && mv Godot_v${GODOT_SURUM}-stable_linux.x86_64 godot && rm g.zip
+          curl -sSL -o t.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_SURUM}-stable/Godot_v${GODOT_SURUM}-stable_export_templates.tpz"
+          unzip -q t.tpz && mv templates/* ~/.local/share/godot/export_templates/${GODOT_SURUM}.stable/ && rm -rf t.tpz templates
+
+      # APK imza anahtarı sabit kalmalı (yoksa güncelleme eski sürümün üstüne kurulmaz).
+      # Depo gizlisi (secret) varsa o kullanılır; yoksa ilk derlemede üretilip önbellekte saklanır.
+      - name: İmza anahtarı önbelleği
+        uses: actions/cache@v4
+        with:
+          path: ~/imza
+          key: apk-imza-v1
+
+      - name: İmza anahtarları
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+        run: |
+          mkdir -p ~/imza
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > ~/imza/kulvekanat.keystore
+            echo "$KS_PASS" > ~/imza/parola
+          elif [ ! -f ~/imza/kulvekanat.keystore ]; then
+            P=$(openssl rand -hex 16)
+            keytool -genkeypair -keystore ~/imza/kulvekanat.keystore -alias kanatix -keyalg RSA -keysize 2048 \
+              -validity 10000 -storepass "$P" -keypass "$P" -dname "CN=Kanatix, O=Kanatix, C=TR"
+            echo "$P" > ~/imza/parola
+          fi
+          if [ ! -f ~/imza/debug.keystore ]; then
+            keytool -genkeypair -keystore ~/imza/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 \
+              -validity 10000 -storepass android -keypass android -dname "CN=Android Debug, O=Android, C=US"
+          fi
+
+      - name: Godot düzenleyici ayarları (Android SDK yolu)
+        run: |
+          mkdir -p ~/.config/godot
+          for f in editor_settings-4.tres editor_settings-4.6.tres; do
+          cat > ~/.config/godot/$f <<AYAR
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "${ANDROID_SDK_ROOT}"
+          export/android/java_sdk_path = "${JAVA_HOME}"
+          export/android/debug_keystore = "${HOME}/imza/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          AYAR
+          done
+          sed -i 's/^          //' ~/.config/godot/*.tres
+          cat ~/.config/godot/editor_settings-4.6.tres
+          ls "${ANDROID_SDK_ROOT}/build-tools" | tail -3
+
+      - name: Kaynakları içe aktar
+        run: |
+          ~/godot/godot --headless --path . --import 2>&1 | grep -vE "^$" | tail -20 || true
+
+      - name: Windows exe
+        run: |
+          mkdir -p build
+          ~/godot/godot --headless --path . --export-release "Windows" build/KulVeKanat.exe 2>&1 | tail -20
+          test -f build/KulVeKanat.exe
+
+      - name: Android APK
+        run: |
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PATH=~/imza/kulvekanat.keystore
+          export GODOT_ANDROID_KEYSTORE_RELEASE_USER=kanatix
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=$(cat ~/imza/parola)
+          ~/godot/godot --headless --path . --export-release "Android" build/KulVeKanat.apk 2>&1 | tail -30
+          test -f build/KulVeKanat.apk
+          ls -la build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KulVeKanat
+          path: build/KulVeKanat.*
+
+      - name: Sürümü yayınla
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.surum.outputs.v }}
+          name: Kül ve Kanat ${{ steps.surum.outputs.v }}
+          body_path: SURUM_NOTU.md
+          make_latest: true
+          files: |
+            build/KulVeKanat.exe
+            build/KulVeKanat.apk
+
+  # Telefonda açılıyor mu? Android öykünücüsünde APK'yı kurup çalıştırır, günlüğü ve ekran görüntüsünü yazar.
+  apk-test:
+    needs: derle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: KulVeKanat
+          path: build
+      - name: KVM izni
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Öykünücüde çalıştır
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            adb install -r build/KulVeKanat.apk
+            adb logcat -c
+            adb shell monkey -p com.kanatix.kulvekanat -c android.intent.category.LAUNCHER 1
+            sleep 30
+            adb shell input tap 640 380 || true
+            sleep 10
+            echo "=== GODOT GUNLUGU ==="
+            adb logcat -d | grep -iE "godot|kulvekanat|vulkan|opengl|fatal|AndroidRuntime" | tail -120 || true
+            echo "=== CALISIYOR MU ==="
+            adb shell pidof com.kanatix.kulvekanat && echo "UYGULAMA ACIK" || echo "UYGULAMA KAPANDI"
+            adb exec-out screencap -p > ekran.png
+            echo "=== EKRAN BASE64 ==="
+            base64 -w0 ekran.png; echo
