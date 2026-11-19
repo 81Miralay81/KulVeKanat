@@ -9,9 +9,12 @@ Kanatix yazılım ailesinin bir parçası. Godot 4.6 ile yapıldı; Windows (exe
 
 Oyun her açılışta yeni sürüm olup olmadığına bakar; varsa ana menüde "YENİ SÜRÜMÜ İNDİR" düğmesi çıkar.
 
-## Bu sürümde neler var (0.1)
+## Bu sürümde neler var (0.2)
 
-- **Sınıf:** Kılıç Muhafızı (iki elli kılıç, ışık kanatları)
+- **Sınıflar:** Kılıç Muhafızı (yakın dövüş), Gölge Avcı (arbalet, uzaktan), Kül Büyücü (alan büyüleri); her sınıfın ayrı kaydı
+- **Kasaba (Son Sığınak):** demirci (eşya yükseltme), simyacı (iksir), tüccar (gizemli sandıklar)
+- **Sandıklar:** köşelerde, yanına gelince açılır, her 5 dalgada dolar
+- **Kayıt:** kaldığın dalgadan devam; ölünce son kontrol noktasından
 - **Harita:** 1. bölüm, Kül Ovaları - Yıkık Mahzen
 - **Düşmanlar:** Kül İskeleti, Kül Haydudu, Kül Muhafızı, Kül Büyücüsü (uzaktan büyü atar), elit düşmanlar,
   her 10. dalgada boss: **Kor Avcısı Garran**

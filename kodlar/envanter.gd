@@ -21,8 +21,9 @@ const YUVA_DOSYA := {"Silah": "silah", "Zırh": "zirh", "Kask": "kask", "Yüzük
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	get_viewport().size_changed.connect(func(): size = get_viewport_rect().size)
 	for y in YUVA_DOSYA:
 		_ikonlar[y] = load("res://assets/ikon/yuva_%s.png" % YUVA_DOSYA[y])
 	var arka := ColorRect.new()
@@ -141,6 +142,8 @@ func _dugme(metin: String, cagri: Callable) -> Button:
 
 
 func ac() -> void:
+	position = Vector2.ZERO
+	size = get_viewport_rect().size
 	_secili_canta = -1
 	_secili_yuva = ""
 	visible = true

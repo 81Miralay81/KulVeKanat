@@ -1,7 +1,7 @@
 extends Node
 ## Genel oyun durumu: sürüm, girdiler (klavye, fare, dokunmatik), kayıt.
 
-const SURUM := "0.1.2"
+const SURUM := "0.2.0"
 const DEPO := "81Miralay81/KulVeKanat"
 
 ## Oyunun kullandığı eylemler (klavye tuşları aşağıda tanımlanır).
@@ -16,7 +16,8 @@ var dokunmatik_acik := false          ## ekrandaki dokunmatik düğmeler görün
 var dokunmatik_yon := Vector2.ZERO    ## joystick yönü (uzunluk 0..1)
 var son_girdi_fare := false           ## en son fare mi kullanıldı (nişan için)
 var dogrudan_basla := false           ## yeniden başlatınca menüyü atla
-var kayit := {"en_iyi_dalga": 0, "en_iyi_seviye": 1, "kalite": 1}
+var secili_sinif := ""                ## karakter seçiminde seçilen sınıf (boşsa son oynanan)
+var kayit := {"en_iyi_dalga": 0, "en_iyi_seviye": 1, "kalite": 1, "son_sinif": ""}
 var fps_goster := false
 
 const KAYIT_YOLU := "user://kayit.cfg"
@@ -30,6 +31,9 @@ func _ready() -> void:
 		Engine.max_fps = 60
 	_tuslari_tanimla()
 	_kayit_yukle()
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--sinif="):
+			secili_sinif = arg.trim_prefix("--sinif=")
 	if "--otomatik-test" in OS.get_cmdline_user_args():
 		add_child(load("res://test/otomatik.gd").new())
 	if "--boss-test" in OS.get_cmdline_user_args():
@@ -138,3 +142,36 @@ func kaydet() -> void:
 	for k in kayit:
 		c.set_value("oyun", k, kayit[k])
 	c.save(KAYIT_YOLU)
+
+
+
+# ------------------------------------------------------------------ karakter kayıtları (her sınıfa bir kayıt)
+func _karakter_yolu(sinif: String) -> String:
+	return "user://karakter_%s.json" % sinif
+
+
+func karakter_kaydet(veri: Dictionary) -> void:
+	var f := FileAccess.open(_karakter_yolu(veri["sinif"]), FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(veri))
+		f.close()
+	kayit["son_sinif"] = veri["sinif"]
+	kaydet()
+
+
+func karakter_yukle(sinif: String) -> Dictionary:
+	if sinif == "" or not FileAccess.file_exists(_karakter_yolu(sinif)):
+		return {}
+	var f := FileAccess.open(_karakter_yolu(sinif), FileAccess.READ)
+	if f == null:
+		return {}
+	var v = JSON.parse_string(f.get_as_text())
+	return v if typeof(v) == TYPE_DICTIONARY else {}
+
+
+func karakter_sil(sinif: String) -> void:
+	if FileAccess.file_exists(_karakter_yolu(sinif)):
+		DirAccess.remove_absolute(_karakter_yolu(sinif))
+	if kayit["son_sinif"] == sinif:
+		kayit["son_sinif"] = ""
+		kaydet()

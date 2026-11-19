@@ -8,14 +8,15 @@ var _mat_ic: ShaderMaterial
 var _mat_dis: ShaderMaterial
 var _mat_koyu: ShaderMaterial
 var parlaklik := 0.35
+var renk := Color(1.0, 0.42, 0.08)   ## sınıfa göre kanat rengi
 var _hedef := 0.35
 var _zaman := 0.0
 
 
 func _ready() -> void:
-	_mat_ic = Efekt.yeni_parlak_mat(Color(1.0, 0.32, 0.04), 2.2)
-	_mat_dis = Efekt.yeni_parlak_mat(Color(1.0, 0.55, 0.12), 2.4)
-	_mat_koyu = Efekt.yeni_parlak_mat(Color(0.9, 0.18, 0.02), 1.6)
+	_mat_ic = Efekt.yeni_parlak_mat(renk.darkened(0.15), 2.2)
+	_mat_dis = Efekt.yeni_parlak_mat(renk.lightened(0.25), 2.4)
+	_mat_koyu = Efekt.yeni_parlak_mat(renk.darkened(0.4), 1.6)
 	_sol = _kanat_yap(-1)
 	_sag = _kanat_yap(1)
 	add_child(_sol)

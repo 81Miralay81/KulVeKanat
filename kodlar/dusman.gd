@@ -40,6 +40,7 @@ var _govdeler: Array[MeshInstance3D] = []
 var _flas: StandardMaterial3D
 var _flas_deger := 0.0
 var _flas_acik := false
+var _yavas := 0.0
 var _boss_yetenek := 6.0
 var _boss_cagir := 14.0
 var _etiket: Label3D
@@ -143,6 +144,7 @@ func _physics_process(dt: float) -> void:
 		for m in _govdeler:
 			m.material_overlay = _flas if flas_acik else null
 	_saldiri_bekleme -= dt
+	_yavas = maxf(0.0, _yavas - dt)
 	_itme = _itme.move_toward(Vector3.ZERO, dt * 30.0)
 
 	if _durum == "dogus":
@@ -180,7 +182,7 @@ func _physics_process(dt: float) -> void:
 			istenen += _ayrisma() * 1.4
 			if boss:
 				_boss_dusun(dt, mesafe)
-			velocity = istenen.limit_length(1.0) * hiz + _itme
+			velocity = istenen.limit_length(1.0) * hiz * (0.4 if _yavas > 0 else 1.0) + _itme
 			if istenen.length() > 0.1:
 				_don(istenen)
 				_oynat("Running_C" if (tur == "haydut" or elit) and anim.has_animation("Running_C") else "Walking_D_Skeletons", clampf(velocity.length() / 3.0, 0.7, 1.7))
@@ -350,3 +352,8 @@ func _ol() -> void:
 	tw.tween_interval(1.3)
 	tw.tween_property(self, "position:y", -1.6, 1.0)
 	tw.tween_callback(queue_free)
+
+
+
+func yavaslat(sure: float) -> void:
+	_yavas = maxf(_yavas, sure)

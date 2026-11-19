@@ -210,7 +210,7 @@ func _draw() -> void:
 			continue
 		var rr := r * (0.92 if basili else 1.0)
 		draw_circle(c, rr + 5, Color(0, 0, 0, 0.45))
-		var ikon: Texture2D = _ikonlar.get(ad)
+		var ikon: Texture2D = kahraman.ikon(ad) if kahraman else _ikonlar.get(ad)
 		var hazir := true
 		var oran := 0.0
 		var kilitli := false

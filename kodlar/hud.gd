@@ -151,7 +151,7 @@ func _kure(c: Vector2, r: float, oran: float, ust: Color, alt: Color, etiket: St
 
 
 func _yuva(p: Vector2, boy: float, ad: String) -> void:
-	var ikon: Texture2D = _ikonlar.get(ad)
+	var ikon: Texture2D = kahraman.ikon(ad)
 	var kilitli := ad in kahraman.ACILMA and not kahraman.acik_mi(ad)
 	var renk := Color(0.35, 0.35, 0.35) if kilitli else Color.WHITE
 	if ad in kahraman.MANA and kahraman.mana < kahraman.MANA[ad]:
@@ -345,6 +345,10 @@ func _harita_ciz(c: Vector2, r: float, buyuk: bool) -> void:
 	var nb := 1.6 if buyuk else 1.0
 	for s in Dunya.SUTUNLAR:
 		draw_circle(_harita_nokta(s, c, olcek), 4.0 * nb, Color(0.6, 0.55, 0.5))
+	for sd in get_tree().get_nodes_in_group("sandik"):
+		if not sd.acik:
+			var sp := _harita_nokta(sd.global_position, c, olcek)
+			draw_rect(Rect2(sp - Vector2(3.5, 3.5) * nb, Vector2(7, 7) * nb), Color(1, 0.8, 0.25))
 	for g in get_tree().get_nodes_in_group("ganimet"):
 		var renk := Color(1, 0.82, 0.35)
 		if g.tur == "esya":

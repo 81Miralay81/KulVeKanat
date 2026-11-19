@@ -14,7 +14,13 @@ def rgrad(size, inner, outer):
 PAL = {"kilic": ((180,200,230,255),(30,40,70,255)), "kasirga": ((255,200,90,255),(140,30,5,255)),
        "yarik": ((255,110,50,255),(50,8,4,255)), "kanat": ((255,170,70,255),(90,30,5,255)),
        "meteor": ((255,150,60,255),(60,10,30,255)), "son": ((255,225,140,255),(150,60,0,255)),
-       "iksir": ((255,90,90,255),(60,8,12,255))}
+       "iksir": ((255,90,90,255),(60,8,12,255)),
+       "yay": ((200,170,255,255),(40,20,70,255)), "coklu": ((210,150,255,255),(50,15,80,255)),
+       "okyagmuru": ((170,140,255,255),(30,15,70,255)), "golge": ((150,110,220,255),(20,10,40,255)),
+       "zehir": ((150,255,120,255),(10,60,20,255)), "golgefirtina": ((230,180,255,255),(70,20,110,255)),
+       "atestopu": ((255,170,80,255),(90,20,5,255)), "alevhalkasi": ((255,140,60,255),(80,10,5,255)),
+       "buz": ((170,230,255,255),(10,40,90,255)), "isinlanma": ((180,210,255,255),(30,30,90,255)),
+       "kiyamet": ((255,200,120,255),(120,20,10,255))}
 
 def icon(kind, size=128):
     im = rgrad(size*2, *PAL[kind]).resize((size, size), Image.LANCZOS)
@@ -44,6 +50,42 @@ def icon(kind, size=128):
         for i in range(4):
             g.line(P([(-110+i*14,-110+i*4),(10,10)]), fill=(255,220,150,200), width=int((10+i*4)*k))
         g.ellipse(P([(-15,-15),(75,75)]), fill=w); g.ellipse(P([(5,5),(55,55)]), fill=(255,140,40,255))
+    elif kind == "yay":
+        g.arc(P([(-110,-120),(40,120)]), -70, 70, fill=w, width=int(18*k)); g.line(P([(-8,-112),(-8,112)]), fill=w, width=int(6*k))
+        g.line(P([(-60,0),(110,0)]), fill=w, width=int(10*k)); g.polygon(P([(110,0),(80,-18),(80,18)]), fill=w)
+    elif kind == "coklu":
+        for a2 in (-35,-17,0,17,35):
+            r = math.radians(a2); x2, y2 = math.cos(r)*115, math.sin(r)*115
+            g.line(P([(-90,0),(x2,y2)]), fill=w, width=int(8*k)); g.polygon(P([(x2,y2),(x2-22*math.cos(r)+10*math.sin(r), y2-22*math.sin(r)-10*math.cos(r)),(x2-22*math.cos(r)-10*math.sin(r), y2-22*math.sin(r)+10*math.cos(r))]), fill=w)
+    elif kind == "okyagmuru":
+        for x2 in (-80,-35,10,55,95):
+            g.line(P([(x2-30,-110),(x2,60)]), fill=w, width=int(8*k)); g.polygon(P([(x2,80),(x2-14,50),(x2+10,48)]), fill=w)
+    elif kind == "golge":
+        for i in range(3):
+            g.ellipse(P([(-70+i*45,-60),(10+i*45,90)]), fill=(255,255,255,90+i*80))
+    elif kind == "zehir":
+        g.ellipse(P([(-70,-40),(70,100)]), fill=w); g.rectangle(P([(-20,-90),(20,-30)]), fill=w)
+        for (x2,y2) in ((-20,30),(25,55),(0,0)): g.ellipse(P([(x2-14,y2-14),(x2+14,y2+14)]), fill=(60,170,60,255))
+    elif kind == "golgefirtina":
+        for i in range(10):
+            a2 = i*36; r = math.radians(a2)
+            g.line(P([(math.cos(r)*30, math.sin(r)*30),(math.cos(r)*115, math.sin(r)*115)]), fill=w, width=int(10*k))
+    elif kind == "atestopu":
+        g.ellipse(P([(-10,-60),(110,60)]), fill=w)
+        for i in range(4): g.line(P([(-110,-40+i*26),(10,-30+i*20)]), fill=(255,230,180,200), width=int((14-i*2)*k))
+        g.ellipse(P([(15,-35),(85,35)]), fill=(255,140,40,255))
+    elif kind == "alevhalkasi":
+        g.ellipse(P([(-110,-110),(110,110)]), outline=w, width=int(26*k)); g.ellipse(P([(-55,-55),(55,55)]), outline=(255,220,160,255), width=int(14*k))
+    elif kind == "buz":
+        for a2 in (0,60,120):
+            r = math.radians(a2); g.line(P([(math.cos(r)*-110, math.sin(r)*-110),(math.cos(r)*110, math.sin(r)*110)]), fill=w, width=int(16*k))
+        g.ellipse(P([(-24,-24),(24,24)]), fill=w)
+    elif kind == "isinlanma":
+        g.ellipse(P([(-110,-40),(-30,40)]), outline=w, width=int(12*k)); g.ellipse(P([(30,-40),(110,40)]), fill=w)
+        g.line(P([(-30,0),(30,0)]), fill=(255,255,255,150), width=int(10*k))
+    elif kind == "kiyamet":
+        for (x2,y2,r2) in ((-55,-45,32),(50,-60,26),(5,40,44)):
+            g.line(P([(x2-80,y2-80),(x2,y2)]), fill=(255,230,170,200), width=int(r2*0.6*k)); g.ellipse(P([(x2-r2,y2-r2),(x2+r2,y2+r2)]), fill=w)
     elif kind == "iksir":
         g.ellipse(P([(-70,-30),(70,110)]), fill=w); g.rectangle(P([(-28,-100),(28,-20)]), fill=w); g.ellipse(P([(-52,5),(52,95)]), fill=(220,30,40,255))
     G = G.resize((size, size), Image.LANCZOS)

@@ -3,6 +3,7 @@ extends RefCounted
 ## 1. bölüm haritası: Kül Ovaları - Yıkık Mahzen. Zemin, duvarlar, sütunlar, meşaleler, süzülen kül.
 
 const YARI := 20.0   ## arena yarı genişliği (40 x 40 m)
+const SANDIKLAR := [[Vector3(-17.6, 0, 6), PI * 0.5], [Vector3(-16.8, 0, -16.8), PI * 0.25], [Vector3(5, 0, -17.6), 0.0], [Vector3(16.5, 0, -16.8), -PI * 0.2]]
 const SUTUNLAR := [Vector3(-9, 0, -9), Vector3(9, 0, -9), Vector3(-9, 0, 9), Vector3(9, 0, 9)]
 
 static var _sahneler := {}
@@ -101,7 +102,6 @@ static func insa(kok: Node3D, mobil: bool) -> void:
 	_koy(kok, "barrel_small_stack", Vector3(-17, 0, -17.5), 0.4)
 	_koy(kok, "crates_stacked", Vector3(-17.5, 0, -14), 1.0)
 	_koy(kok, "barrel_large", Vector3(-14.5, 0, -17.8), 0.0)
-	_koy(kok, "chest_gold", Vector3(-17.5, 0, 6), PI * 0.5)
 
 	# --- görünmez sınır duvarları
 	for kenar in [[Vector3(0, 1.5, -YARI - 0.5), Vector3(YARI * 2 + 2, 3, 1)], [Vector3(0, 1.5, YARI + 0.5), Vector3(YARI * 2 + 2, 3, 1)],

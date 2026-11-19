@@ -11,6 +11,8 @@ const HIZ := 6.2
 const KOSU_ANIM_HIZI := 5.6    ## Running_A animasyonunun doğal hızı (ayak kaymasın diye)
 
 var ana: Node                  ## ana sahne (kamera sarsıntısı, düşman listesi)
+var sinif := "muhafiz"         ## muhafiz, avci, buyucu (eklenmeden önce ayarlanır)
+var bilgi: Dictionary
 var model: Node3D
 var anim: AnimationPlayer
 var kanat: Kanat
@@ -55,8 +57,6 @@ var bekleme := {"yetenek1": 0.0, "yetenek2": 0.0, "yetenek3": 0.0, "yetenek4": 0
 const BEKLEME := {"yetenek1": 8.0, "yetenek2": 5.0, "yetenek3": 3.5, "yetenek4": 10.0, "iksir": 10.0}
 const MANA := {"yetenek1": 35.0, "yetenek2": 30.0, "yetenek3": 15.0, "yetenek4": 50.0}
 const ACILMA := {"yetenek1": 1, "yetenek3": 2, "yetenek2": 3, "yetenek4": 5}
-const YETENEK_AD := {"yetenek1": "Kor Kasırgası", "yetenek2": "Yer Yarma", "yetenek3": "Kanat Atılımı",
-	"yetenek4": "Meteor Yağmuru", "son_vurus": "Kanat Açılımı", "saldir": "Kılıç Darbesi", "iksir": "İksir"}
 
 const DONGU_ANIMLARI := ["Idle", "2H_Melee_Idle", "Running_A", "Running_B", "2H_Melee_Attack_Spinning", "Walking_A"]
 
@@ -73,17 +73,19 @@ func _ready() -> void:
 	sekil.position.y = 0.9
 	add_child(sekil)
 
-	model = load("res://assets/karakter/Knight.glb").instantiate()
+	bilgi = Sinif.VERI[sinif]
+	model = load("res://assets/karakter/%s.glb" % bilgi["model"]).instantiate()
 	add_child(model)
 	model.scale = Vector3.ONE * 1.05
 	anim = model.find_child("AnimationPlayer", true, false)
-	for ad in DONGU_ANIMLARI:
+	for ad in DONGU_ANIMLARI + [bilgi["bekleme_anim"]]:
 		if anim.has_animation(ad):
 			anim.get_animation(ad).loop_mode = Animation.LOOP_LINEAR
-	for ad in ["1H_Sword", "1H_Sword_Offhand", "Badge_Shield", "Rectangle_Shield", "Round_Shield", "Spike_Shield"]:
-		var n := model.find_child(ad, true, false)
-		if n:
-			n.get_parent().remove_child(n)
+	# elindeki silahlardan yalnızca sınıfın silahı kalsın
+	for n in model.find_children("*", "MeshInstance3D", true, false):
+		var ust := n.get_parent()
+		if ust is BoneAttachment3D and str(ust.name).begins_with("handslot") and not n.name in bilgi["sakla"]:
+			ust.remove_child(n)
 			n.queue_free()
 	for m in model.find_children("*", "MeshInstance3D", true, false):
 		_govdeler.append(m)
@@ -93,6 +95,7 @@ func _ready() -> void:
 	_flas_mat.albedo_color = Color(1, 0.1, 0.05, 0.0)
 
 	kanat = Kanat.new()
+	kanat.renk = bilgi["kanat"]
 	model.add_child(kanat)
 	kanat.position = Vector3(0, 1.32, -0.28)
 
@@ -108,21 +111,55 @@ func _ready() -> void:
 	_ozellikleri_hesapla()
 	can = deger("can")
 	mana = deger("mana")
-	anim.play("2H_Melee_Idle")
+	anim.play(bilgi["bekleme_anim"])
 
 
 # ------------------------------------------------------------------ özellikler
 func deger(k: String) -> float:
 	var v: float = temel.get(k, 0.0)
 	for y in esyalar:
-		v += float(esyalar[y]["ozellik"].get(k, 0.0))
+		v += Esya.deger(esyalar[y], k)
 	return v
 
 
 func _ozellikleri_hesapla() -> void:
-	temel["hasar"] = 28.0 + (seviye - 1) * 5.0
-	temel["can"] = 320.0 + (seviye - 1) * 42.0
-	temel["mana"] = 120.0 + (seviye - 1) * 8.0
+	var b: Dictionary = bilgi if not bilgi.is_empty() else Sinif.VERI[sinif]
+	temel["hasar"] = b["hasar"] + (seviye - 1) * b["hasar"] * 0.18
+	temel["can"] = b["can"] + (seviye - 1) * b["can"] * 0.13
+	temel["mana"] = b["mana"] + (seviye - 1) * 7.0
+	temel["kritik"] = b["kritik"]
+	temel["zirh"] = b["zirh"]
+	temel["hiz"] = b["hiz"]
+
+
+func yetenek_ad(eylem: String) -> String:
+	return Sinif.yetenek_ad(sinif, eylem)
+
+
+func ikon(eylem: String) -> Texture2D:
+	return Sinif.ikon(sinif, eylem)
+
+
+func kayit_verisi() -> Dictionary:
+	return {"sinif": sinif, "seviye": seviye, "tecrube": tecrube, "altin": altin, "iksir": iksir,
+		"esyalar": esyalar, "canta": canta}
+
+
+func kayit_yukle(d: Dictionary) -> void:
+	seviye = int(d.get("seviye", 1))
+	tecrube = int(d.get("tecrube", 0))
+	altin = int(d.get("altin", 0))
+	iksir = int(d.get("iksir", 3))
+	esyalar = d.get("esyalar", {})
+	canta = d.get("canta", [])
+	# JSON sayıları ondalık gelir: eşya alanlarını düzelt
+	for e in esyalar.values() + canta:
+		e["nadirlik"] = int(e["nadirlik"])
+		e["seviye"] = int(e["seviye"])
+		e["arti"] = int(e.get("arti", 0))
+	_ozellikleri_hesapla()
+	can = deger("can")
+	mana = deger("mana")
 
 
 func gereken_tecrube() -> int:
@@ -270,7 +307,7 @@ func _physics_process(dt: float) -> void:
 		return
 	if ana and ana.durum != "oyun":
 		velocity = Vector3.ZERO
-		_oynat("2H_Melee_Idle", 0.2)
+		_oynat(bilgi["bekleme_anim"], 0.2)
 		return
 	mana = minf(deger("mana"), mana + (7.0 + seviye * 0.3) * dt)
 	if _son_vurus_sure > 0:
@@ -344,7 +381,7 @@ func _hareket_animasyonu(hiz_su_an: float, hiz_max: float) -> void:
 		# animasyon hızı gerçek yürüme hızına eşitlenir: ayaklar kaymaz
 		_oynat("Running_A", 0.12, clampf(hiz_su_an / KOSU_ANIM_HIZI, 0.6, 1.6))
 	else:
-		_oynat("2H_Melee_Idle", 0.18, 1.0)
+		_oynat(bilgi["bekleme_anim"], 0.18, 1.0)
 
 
 func _oynat(ad: String, gecis := 0.1, hiz := 1.0, bastan := false) -> void:
@@ -357,42 +394,46 @@ func _oynat(ad: String, gecis := 0.1, hiz := 1.0, bastan := false) -> void:
 	anim.speed_scale = hiz
 
 
+const SINIF_YETENEK := {
+	"muhafiz": {"saldir": "_temel_saldiri", "yetenek1": "_kasirga_baslat", "yetenek2": "_yer_yarma", "yetenek3": "_atilim", "yetenek4": "_meteor", "son_vurus": "_son_vurus"},
+	"avci": {"saldir": "_arbalet", "yetenek1": "_coklu_atis", "yetenek2": "_ok_yagmuru", "yetenek3": "_golge_adimi", "yetenek4": "_zehir_bombasi", "son_vurus": "_golge_firtinasi"},
+	"buyucu": {"saldir": "_ates_topu", "yetenek1": "_alev_halkasi", "yetenek2": "_buz_firtinasi", "yetenek3": "_isinlanma", "yetenek4": "_meteor", "son_vurus": "_kul_kiyameti"},
+}
+
+
+func _yap(eylem: String) -> void:
+	call(SINIF_YETENEK[sinif][eylem])
+
+
 func _girdi_isle() -> void:
 	var istek := _istek
 	if istek != "":
 		_istek = ""
-		if istek == "yetenek1" and _yetenek_hazir("yetenek1"):
-			_kasirga_baslat()
-			return
-		if istek == "yetenek2" and _yetenek_hazir("yetenek2"):
-			_yer_yarma()
-			return
-		if istek == "yetenek3" and _yetenek_hazir("yetenek3"):
-			_atilim()
-			return
-		if istek == "yetenek4" and _yetenek_hazir("yetenek4"):
-			_meteor()
+		if istek in ["yetenek1", "yetenek2", "yetenek3", "yetenek4"]:
+			if _yetenek_hazir(istek):
+				_yap(istek)
 			return
 		if istek == "son_vurus":
 			if ofke >= 100.0:
-				_son_vurus()
+				ofke = 0.0
+				_yap("son_vurus")
 			elif ana:
-				ana.mesaj_goster("Kanat Açılımı henüz dolmadı", Color(1, 0.7, 0.4))
+				ana.mesaj_goster("%s henüz dolmadı" % yetenek_ad("son_vurus"), Color(1, 0.7, 0.4))
 			return
 		if istek == "iksir":
 			_iksir_ic()
 			return
 		if istek == "saldir":
-			_temel_saldiri()
+			_yap("saldir")
 			return
 	if Input.is_action_pressed("saldir"):
-		_temel_saldiri()
+		_yap("saldir")
 
 
 func _yetenek_hazir(ad: String) -> bool:
 	if not acik_mi(ad):
 		if ana:
-			ana.mesaj_goster("%s seviye %d'de açılır" % [YETENEK_AD[ad], ACILMA[ad]], Color(0.8, 0.8, 0.8))
+			ana.mesaj_goster("%s seviye %d'de açılır" % [yetenek_ad(ad), ACILMA[ad]], Color(0.8, 0.8, 0.8))
 		return false
 	if bekleme[ad] > 0:
 		return false
@@ -592,7 +633,6 @@ func _meteor() -> void:
 
 
 func _son_vurus() -> void:
-	ofke = 0.0
 	_son_vurus_sure = 10.0
 	kanat.ac(1.0)
 	_dokunulmaz = 1.0
@@ -605,7 +645,7 @@ func _son_vurus() -> void:
 		_alan_hasari(global_position, 8.0, 4.5, 14.0, true)
 	, 1.2)
 	if ana:
-		ana.mesaj_goster("KANAT AÇILIMI!", Efekt.ATES_ACIK, true)
+		ana.mesaj_goster(yetenek_ad("son_vurus").to_upper() + "!", bilgi["kanat"].lightened(0.3), true)
 
 
 func _iksir_ic() -> void:
@@ -704,5 +744,248 @@ func dirilt() -> void:
 	can = deger("can")
 	mana = deger("mana")
 	_dokunulmaz = 2.0
-	anim.play("2H_Melee_Idle", 0.2)
+	anim.play(bilgi["bekleme_anim"], 0.2)
 	kanat.ac(0.35)
+
+
+
+# ================================================================== GÖLGE AVCI
+func _mermi(yon: Vector3, tur: String, carpan: float, hiz := 26.0, delme := 0, patlama := 0.0, renk := Color(0.85, 0.65, 1.0)) -> void:
+	var m := OyuncuMermi.new()
+	m.kahraman = self
+	m.yon = yon
+	m.tur = tur
+	m.carpan = carpan
+	m.hiz = hiz
+	m.delme = delme
+	m.patlama_r = patlama
+	m.renk = renk
+	get_parent().add_child(m)
+	m.global_position = global_position + Vector3(0, 1.15, 0) + yon * 0.7
+
+
+func _arbalet() -> void:
+	bakis = nisan_yonu()
+	model.rotation.y = atan2(bakis.x, bakis.z)
+	_eylem_baslat("2H_Ranged_Shoot", 0.42, 0.14, func():
+		Ses.cal("savurma", -6.0, 0.15)
+		_mermi(bakis, "ok", 1.0, 30.0, 1)
+	, 1.7)
+
+
+func _coklu_atis() -> void:
+	bakis = nisan_yonu()
+	model.rotation.y = atan2(bakis.x, bakis.z)
+	_eylem_baslat("2H_Ranged_Shoot", 0.5, 0.16, func():
+		Ses.cal("savurma", -2.0)
+		for i in 9:
+			var aci := deg_to_rad(-40.0 + i * 10.0)
+			_mermi(bakis.rotated(Vector3.UP, aci), "ok", 1.1, 28.0, 2)
+		Efekt.halka_dalga(global_position, Color(0.75, 0.4, 1.0), 0.3, 2.5, 0.3, 0.4, 3.0)
+	, 1.5)
+
+
+func _ok_yagmuru() -> void:
+	var yon := nisan_yonu()
+	bakis = yon
+	model.rotation.y = atan2(bakis.x, bakis.z)
+	_eylem_baslat("2H_Ranged_Shoot", 0.55, 0.2, func():
+		var merkez := global_position + yon * 6.0
+		Efekt.yer_isareti(merkez, 3.5, 0.5, Color(0.6, 0.35, 1.0))
+		for i in 18:
+			get_tree().create_timer(0.35 + i * 0.07, false).timeout.connect(func():
+				var a := randf() * TAU
+				var p := merkez + Vector3(cos(a), 0, sin(a)) * randf_range(0.0, 3.4)
+				_dusen_ok(p))
+	, 1.4)
+
+
+func _dusen_ok(p: Vector3) -> void:
+	var m := MeshInstance3D.new()
+	var b := BoxMesh.new()
+	b.size = Vector3(0.06, 1.6, 0.06)
+	m.mesh = b
+	m.material_override = Efekt.parlak_mat(Color(0.8, 0.6, 1.0), 3.0)
+	get_parent().add_child(m)
+	m.global_position = p + Vector3(-1.0, 9.0, -1.0)
+	m.look_at(p, Vector3.UP)
+	m.rotate_object_local(Vector3.RIGHT, PI * 0.5)
+	var tw := m.create_tween()
+	tw.tween_property(m, "global_position", p + Vector3(0, 0.5, 0), 0.22)
+	tw.tween_callback(func():
+		Efekt.parcacik(p + Vector3(0, 0.2, 0), 6, Color(0.75, 0.5, 1.0), 0.35, 4.0, -8.0, 0.2, 60.0)
+		_alan_hasari(p, 1.6, 0.65, 1.5, false)
+		m.queue_free())
+
+
+func _golge_adimi() -> void:
+	_atilim()
+	Efekt.parcacik(global_position + Vector3(0, 1.0, 0), 30, Color(0.55, 0.25, 0.9), 0.8, 2.0, 0.5, 0.7, 180.0, true, false, Vector3(0.4, 0.7, 0.4), 1.5)
+
+
+func _zehir_bombasi() -> void:
+	var yon := nisan_yonu()
+	bakis = yon
+	model.rotation.y = atan2(bakis.x, bakis.z)
+	_eylem_baslat("Throw", 0.6, 0.3, func():
+		var hedef := global_position + yon * 6.5
+		hedef.x = clampf(hedef.x, -19, 19)
+		hedef.z = clampf(hedef.z, -19, 19)
+		var b := MeshInstance3D.new()
+		var s := SphereMesh.new()
+		s.radius = 0.22
+		s.height = 0.44
+		b.mesh = s
+		b.material_override = Efekt.parlak_mat(Color(0.4, 1.0, 0.3), 3.0)
+		get_parent().add_child(b)
+		var bas := global_position + Vector3(0, 1.4, 0)
+		b.global_position = bas
+		var tw := b.create_tween()
+		tw.tween_method(func(u: float): b.global_position = bas.lerp(hedef, u) + Vector3(0, sin(u * PI) * 3.0, 0), 0.0, 1.0, 0.45)
+		tw.tween_callback(func():
+			b.queue_free()
+			_zehir_bulutu(hedef))
+	, 1.3)
+
+
+func _zehir_bulutu(p: Vector3) -> void:
+	Ses.cal("patlama", -6.0)
+	var kok := Node3D.new()
+	get_parent().add_child(kok)
+	kok.global_position = p
+	var d := MeshInstance3D.new()
+	d.mesh = Efekt.disk_mesh(3.2)
+	d.material_override = Efekt.parlak_mat(Color(0.3, 0.9, 0.2), 1.2)
+	d.position.y = 0.06
+	kok.add_child(d)
+	for i in 9:
+		get_tree().create_timer(i * 0.5, false).timeout.connect(func():
+			if not is_instance_valid(kok):
+				return
+			Efekt.parcacik(p + Vector3(0, 0.4, 0), 16, Color(0.35, 0.95, 0.25, 0.8), 1.2, 1.2, 0.8, 0.9, 180.0, true, true, Vector3(2.2, 0.3, 2.2), 1.6)
+			_alan_hasari(p, 3.2, 0.45, 0.0, false))
+	get_tree().create_timer(4.6, false).timeout.connect(kok.queue_free)
+
+
+func _golge_firtinasi() -> void:
+	_son_vurus_sure = 10.0
+	kanat.ac(1.0)
+	_dokunulmaz = 1.0
+	_eylem_baslat("2H_Melee_Attack_Spin", 0.7, 0.25, func():
+		for i in 32:
+			_mermi(Vector3.FORWARD.rotated(Vector3.UP, TAU * i / 32.0), "hancer", 2.2, 22.0, 3, 0.0, Color(0.85, 0.5, 1.0))
+		Efekt.halka_dalga(global_position, Color(0.8, 0.45, 1.0), 0.5, 9.0, 0.6, 0.3, 4.0)
+		Efekt.parcacik(global_position + Vector3(0, 1.2, 0), 50, Color(0.7, 0.35, 1.0), 1.2, 10.0, -2.0, 0.4, 180.0)
+		Ses.cal("patlama")
+		if ana:
+			ana.kamera_sars(0.8)
+	, 1.2)
+	if ana:
+		ana.mesaj_goster("GÖLGE FIRTINASI!", Color(0.85, 0.6, 1.0), true)
+
+
+# ================================================================== KÜL BÜYÜCÜ
+func _ates_topu() -> void:
+	bakis = nisan_yonu()
+	model.rotation.y = atan2(bakis.x, bakis.z)
+	_eylem_baslat("Spellcast_Shoot", 0.5, 0.2, func():
+		Ses.cal("buyu", -6.0)
+		_mermi(bakis, "ates", 1.0, 18.0, 0, 1.6)
+	, 1.6)
+
+
+func _alev_halkasi() -> void:
+	_eylem_baslat("Spellcast_Raise", 0.6, 0.28, func():
+		Ses.cal("patlama", -2.0)
+		Efekt.halka_dalga(global_position, Efekt.ATES_ACIK, 0.5, 6.5, 0.45, 0.35, 5.0)
+		Efekt.halka_dalga(global_position, Efekt.ATES, 0.5, 5.5, 0.6, 0.6, 3.0)
+		for i in 12:
+			var a := TAU * i / 12.0
+			Efekt.parcacik(global_position + Vector3(cos(a), 0.3, sin(a)) * 3.0, 10, Efekt.ATES, 0.6, 5.0, -4.0, 0.5, 30.0)
+		Efekt.isik_flas(global_position + Vector3(0, 1.5, 0), Efekt.ATES, 10.0, 12.0, 0.5)
+		_alan_hasari(global_position, 5.5, 1.9, 9.0, true)
+		if ana:
+			ana.kamera_sars(0.5)
+	, 1.3)
+
+
+func _buz_firtinasi() -> void:
+	var yon := nisan_yonu()
+	bakis = yon
+	model.rotation.y = atan2(bakis.x, bakis.z)
+	_eylem_baslat("Spellcast_Long", 0.6, 0.25, func():
+		var p := global_position + yon * 5.5
+		var kok := Node3D.new()
+		get_parent().add_child(kok)
+		kok.global_position = p
+		var d := MeshInstance3D.new()
+		d.mesh = Efekt.disk_mesh(3.8)
+		d.material_override = Efekt.parlak_mat(Color(0.45, 0.8, 1.0), 1.3)
+		d.position.y = 0.06
+		kok.add_child(d)
+		var h := MeshInstance3D.new()
+		h.mesh = Efekt.halka_mesh(3.5, 3.9)
+		h.material_override = Efekt.parlak_mat(Color(0.6, 0.9, 1.0), 2.0)
+		h.position.y = 0.07
+		kok.add_child(h)
+		var l := OmniLight3D.new()
+		l.light_color = Color(0.5, 0.8, 1.0)
+		l.light_energy = 3.0
+		l.omni_range = 7.0
+		l.position.y = 2.0
+		kok.add_child(l)
+		for i in 8:
+			get_tree().create_timer(i * 0.4, false).timeout.connect(func():
+				if not is_instance_valid(kok):
+					return
+				Efekt.parcacik(p + Vector3(0, 4.0, 0), 22, Color(0.75, 0.92, 1.0), 1.0, 2.0, -9.0, 0.25, 30.0, false, true, Vector3(3.2, 0.3, 3.2), 2.5)
+				for dd in (ana.dusmanlar if ana else []):
+					if is_instance_valid(dd) and not dd.olu and dd.global_position.distance_to(p) < 3.9:
+						dd.yavaslat(1.0)
+				_alan_hasari(p, 3.8, 0.5, 0.0, false))
+		get_tree().create_timer(3.4, false).timeout.connect(kok.queue_free)
+	, 1.2)
+
+
+func _isinlanma() -> void:
+	var g := _kamera_yonu(Oyun.hareket_vektoru())
+	var yon := g.normalized() if g.length() > 0.2 else bakis
+	var bas := global_position
+	var hedef := bas + yon * 7.5
+	hedef.x = clampf(hedef.x, -18.8, 18.8)
+	hedef.z = clampf(hedef.z, -18.8, 18.8)
+	for s in Dunya.SUTUNLAR:
+		var f: Vector3 = hedef - s
+		f.y = 0
+		if f.length() < 1.3:
+			hedef = s + f.normalized() * 1.4
+	Efekt.parcacik(bas + Vector3(0, 1.0, 0), 30, Color(0.5, 0.75, 1.0), 0.7, 4.0, 0.0, 0.3, 180.0, true, true, Vector3(0.3, 0.8, 0.3))
+	global_position = hedef
+	bakis = yon
+	_dokunulmaz = 0.4
+	kanat.ac(1.0)
+	get_tree().create_timer(0.35, false).timeout.connect(func(): kanat.ac(0.9 if _son_vurus_sure > 0 else 0.35))
+	Efekt.parcacik(hedef + Vector3(0, 1.0, 0), 30, Color(0.6, 0.85, 1.0), 0.7, 4.0, 0.0, 0.3, 180.0, true, true, Vector3(0.3, 0.8, 0.3))
+	Efekt.halka_dalga(hedef, Color(0.6, 0.85, 1.0), 0.3, 3.0, 0.35, 0.4, 3.0)
+	Ses.cal("atilim")
+
+
+func _kul_kiyameti() -> void:
+	_son_vurus_sure = 10.0
+	kanat.ac(1.0)
+	_dokunulmaz = 1.0
+	_eylem_baslat("Spellcast_Raise", 0.8, 0.3, func():
+		for i in 16:
+			var a := randf() * TAU
+			var r := randf_range(1.5, 8.0)
+			var hedef := global_position + Vector3(cos(a) * r, 0, sin(a) * r)
+			hedef.x = clampf(hedef.x, -19, 19)
+			hedef.z = clampf(hedef.z, -19, 19)
+			Efekt.meteor(hedef, 0.2 + i * 0.13, func(p: Vector3):
+				Ses.cal("patlama", -3.0)
+				if ana:
+					ana.kamera_sars(0.3)
+				_alan_hasari(p, 2.6, 2.4, 7.0, true))
+	, 1.0)
+	if ana:
+		ana.mesaj_goster("KÜL KIYAMETİ!", Efekt.ATES_ACIK, true)

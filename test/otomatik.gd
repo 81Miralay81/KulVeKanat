@@ -39,13 +39,22 @@ func _process(dt: float) -> void:
 	match _adim:
 		0:
 			if _t > 1.0:
-				_foto("01_menu"); _adim += 1
-				ana._basla()
+				_foto("01_menu")
+				ana._secim_ac()
+				_adim += 1
+		100:
+			pass
 		1:
+			if _t > 1.8:
+				_foto("00_secim")
+				ana._secim_menu.visible = false
+				ana._basla()
+				_adim = 101
+		101:
 			if _t > 2.0:
 				k.tecrube_ekle(4000)   # yetenekler açılsın
 				k.mana = 9999
-				_adim += 1
+				_adim = 2
 		2:
 			if _t > 5.5:
 				_foto("02_dalga"); _adim += 1
@@ -162,6 +171,30 @@ func _process(dt: float) -> void:
 				print("ENVANTER KAPANDI ", not ana.envanter.visible, " DEVAM ", not get_tree().paused)
 				_adim += 1
 		21:
-			if _t > 18.5:
+			if _t > 18.4:
+				k.altin = 5000
+				ana._kasaba_ac()
+				_adim += 1
+		22:
+			if _t > 19.0:
+				_foto("10_kasaba")
+				ana.kasaba.visible = false
+				ana.kasaba.kapandi.emit()
+				var s0 = get_tree().get_nodes_in_group("sandik")[0]
+				k.global_position = s0.global_position + Vector3(1.2, 0, 0)
+				_adim += 1
+		23:
+			if _t > 19.8:
+				print("SANDIK ACIK ", get_tree().get_nodes_in_group("sandik")[0].acik, " GANIMET ", get_tree().get_nodes_in_group("ganimet").size())
+				_foto("11_sandik")
+				ana._yeniden(false)
+				_adim += 1
+		24:
+			if _t > 20.6:
+				print("KAYIT ", Oyun.karakter_yukle(Oyun.secili_sinif if Oyun.secili_sinif != "" else "muhafiz").get("seviye"), " MENU DEVAM ", get_tree().current_scene._kayit.get("dalga"))
+				_foto("12_menu_devam")
+				_adim += 1
+		25:
+			if _t > 21.0:
 				print("SEVIYE ", k.seviye, " CAN ", int(k.can), " DALGA ", ana.dalga, " OLDURULEN ", ana._oldurulen)
 				get_tree().quit()

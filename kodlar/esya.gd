@@ -69,17 +69,27 @@ static func puan(e: Dictionary) -> float:
 	var p := 0.0
 	var agirlik := {"hasar": 3.0, "can": 0.5, "kritik": 4.0, "hiz": 3.0, "mana": 0.6, "zirh": 4.0}
 	for k in e["ozellik"]:
-		p += float(e["ozellik"][k]) * agirlik.get(k, 1.0)
+		p += deger(e, k) * agirlik.get(k, 1.0)
 	return p
 
 
 static func ozet(e: Dictionary) -> String:
 	var parca := []
 	for k in e["ozellik"]:
-		var v = e["ozellik"][k]
+		var v := snappedf(deger(e, k), 0.1)
 		parca.append("+%s %s" % [str(v), OZELLIKLER[k][0]])
 	return ", ".join(parca)
 
 
 static func renk(e: Dictionary) -> Color:
 	return NADIRLIK[e["nadirlik"]]["renk"]
+
+
+## Demirci yükseltmesi: her +1 tüm özellikleri %12 artırır.
+static func deger(e: Dictionary, k: String) -> float:
+	return float(e["ozellik"].get(k, 0.0)) * (1.0 + 0.12 * int(e.get("arti", 0)))
+
+
+static func tam_ad(e: Dictionary) -> String:
+	var a := int(e.get("arti", 0))
+	return ("+%d " % a if a > 0 else "") + str(e["ad"])
