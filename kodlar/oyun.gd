@@ -1,7 +1,7 @@
 extends Node
 ## Genel oyun durumu: sürüm, girdiler (klavye, fare, dokunmatik), kayıt.
 
-const SURUM := "0.1.1"
+const SURUM := "0.1.2"
 const DEPO := "81Miralay81/KulVeKanat"
 
 ## Oyunun kullandığı eylemler (klavye tuşları aşağıda tanımlanır).
@@ -16,7 +16,8 @@ var dokunmatik_acik := false          ## ekrandaki dokunmatik düğmeler görün
 var dokunmatik_yon := Vector2.ZERO    ## joystick yönü (uzunluk 0..1)
 var son_girdi_fare := false           ## en son fare mi kullanıldı (nişan için)
 var dogrudan_basla := false           ## yeniden başlatınca menüyü atla
-var kayit := {"en_iyi_dalga": 0, "en_iyi_seviye": 1}
+var kayit := {"en_iyi_dalga": 0, "en_iyi_seviye": 1, "kalite": 1}
+var fps_goster := false
 
 const KAYIT_YOLU := "user://kayit.cfg"
 
@@ -40,7 +41,7 @@ func _tuslari_tanimla() -> void:
 		"sol": [KEY_A, KEY_LEFT], "sag": [KEY_D, KEY_RIGHT],
 		"yukari": [KEY_W, KEY_UP], "asagi": [KEY_S, KEY_DOWN],
 		"saldir": [KEY_J], "yetenek1": [KEY_1, KEY_K], "yetenek2": [KEY_2, KEY_L],
-		"yetenek3": [KEY_3, KEY_SPACE], "yetenek4": [KEY_4, KEY_I],
+		"yetenek3": [KEY_3, KEY_SPACE], "yetenek4": [KEY_4, KEY_F], "envanter": [KEY_I, KEY_B], "fps": [KEY_F3],
 		"son_vurus": [KEY_R], "iksir": [KEY_Q], "duraklat": [KEY_ESCAPE, KEY_P], "harita": [KEY_M, KEY_TAB],
 	}
 	for ad in tuslar:
@@ -53,7 +54,7 @@ func _tuslari_tanimla() -> void:
 	# oyun kolu (Xbox tipi)
 	var kol := {"saldir": JOY_BUTTON_X, "yetenek1": JOY_BUTTON_Y, "yetenek2": JOY_BUTTON_B,
 		"yetenek3": JOY_BUTTON_A, "yetenek4": JOY_BUTTON_RIGHT_SHOULDER,
-		"son_vurus": JOY_BUTTON_LEFT_SHOULDER, "iksir": JOY_BUTTON_DPAD_UP, "duraklat": JOY_BUTTON_START, "harita": JOY_BUTTON_BACK}
+		"son_vurus": JOY_BUTTON_LEFT_SHOULDER, "iksir": JOY_BUTTON_DPAD_UP, "duraklat": JOY_BUTTON_START, "harita": JOY_BUTTON_BACK, "envanter": JOY_BUTTON_DPAD_DOWN}
 	for ad in kol:
 		var j := InputEventJoypadButton.new()
 		j.button_index = kol[ad]
@@ -129,6 +130,10 @@ func _kayit_yukle() -> void:
 func kayit_guncelle(dalga: int, seviye: int) -> void:
 	kayit["en_iyi_dalga"] = max(int(kayit["en_iyi_dalga"]), dalga)
 	kayit["en_iyi_seviye"] = max(int(kayit["en_iyi_seviye"]), seviye)
+	kaydet()
+
+
+func kaydet() -> void:
 	var c := ConfigFile.new()
 	for k in kayit:
 		c.set_value("oyun", k, kayit[k])

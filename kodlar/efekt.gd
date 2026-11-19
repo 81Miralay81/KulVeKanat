@@ -194,17 +194,17 @@ static func _sil_sonra(n: Node, sure: float) -> void:
 		n.get_tree().create_timer(sure, false).timeout.connect(n.queue_free)
 
 
-static func parcacik(konum: Vector3, adet: int, renk: Color, omur := 0.8, hiz := 5.0,
-		yercekimi := -4.0, boyut := 0.25, yayilma := 180.0, yukari := true, katki := true,
-		kutu := Vector3.ZERO, guc := 3.0) -> GPUParticles3D:
-	var p := GPUParticles3D.new()
-	if mobil:
-		adet = max(4, adet / 2)
-	p.amount = adet
-	p.lifetime = omur
-	p.one_shot = true
-	p.explosiveness = 0.92
-	p.local_coords = false
+static var _pm_onbellek := {}
+static var _quad_onbellek := {}
+static var _aktif_parcacik := 0
+static var sinir := 70          ## aynı anda en fazla bu kadar parçacık efekti (takılmayı önler)
+static var kalite := 1.0        ## 0.5 düşük, 1.0 orta/yüksek
+
+
+static func _surec_malzemesi(omur: float, hiz: float, yercekimi: float, yayilma: float, yukari: bool, kutu: Vector3) -> ParticleProcessMaterial:
+	var anahtar := "%.2f|%.1f|%.1f|%.0f|%s|%s" % [omur, hiz, yercekimi, yayilma, yukari, kutu]
+	if _pm_onbellek.has(anahtar):
+		return _pm_onbellek[anahtar]
 	var pm := ParticleProcessMaterial.new()
 	pm.direction = Vector3.UP if yukari else Vector3.FORWARD
 	pm.spread = yayilma
@@ -230,16 +230,60 @@ static func parcacik(konum: Vector3, adet: int, renk: Color, omur := 0.8, hiz :=
 	var sct := CurveTexture.new()
 	sct.curve = sc
 	pm.scale_curve = sct
-	p.process_material = pm
+	_pm_onbellek[anahtar] = pm
+	return pm
+
+
+static func _quad(boyut: float, renk: Color, guc: float, katki: bool) -> QuadMesh:
+	var anahtar := "%.2f|%s|%.1f|%s" % [boyut, renk.to_html(), guc, katki]
+	if _quad_onbellek.has(anahtar):
+		return _quad_onbellek[anahtar]
 	var q := QuadMesh.new()
 	q.size = Vector2(boyut, boyut)
 	q.material = parca_mat(renk, guc, katki)
-	p.draw_pass_1 = q
+	_quad_onbellek[anahtar] = q
+	return q
+
+
+static func parcacik(konum: Vector3, adet: int, renk: Color, omur := 0.8, hiz := 5.0,
+		yercekimi := -4.0, boyut := 0.25, yayilma := 180.0, yukari := true, katki := true,
+		kutu := Vector3.ZERO, guc := 3.0) -> GPUParticles3D:
+	if _sahne == null or not is_instance_valid(_sahne):
+		return null
+	if _aktif_parcacik >= sinir:
+		return null
+	var p := GPUParticles3D.new()
+	adet = maxi(3, int(adet * kalite * (0.6 if mobil else 1.0)))
+	p.amount = adet
+	p.lifetime = omur
+	p.one_shot = true
+	p.explosiveness = 0.92
+	p.local_coords = false
+	p.process_material = _surec_malzemesi(omur, hiz, yercekimi, yayilma, yukari, kutu)
+	p.draw_pass_1 = _quad(boyut, renk, guc, katki)
 	p.visibility_aabb = AABB(Vector3(-8, -2, -8), Vector3(16, 12, 16))
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ekle(p, konum)
 	p.emitting = true
+	_aktif_parcacik += 1
+	p.tree_exited.connect(func(): _aktif_parcacik -= 1)
 	_sil_sonra(p, omur + 0.6)
 	return p
+
+
+static func isinma(konum: Vector3) -> void:
+	## Açılışta her efekt türünü bir kez çalıştırır: gölgelendiriciler önceden derlenir,
+	## oyunda ilk kullanımda takılma olmaz.
+	vurus_kivilcim(konum)
+	vurus_kivilcim(konum, true)
+	olum_kulu(konum)
+	patlama(konum, 2.0)
+	halka_dalga(konum, ATES)
+	yer_isareti(konum, 2.0, 0.3)
+	isik_sutunu(konum, ALTIN, 3.0, 0.5, 0.4)
+	hasar_yazisi(konum, "0", Color.WHITE)
+	parcacik(konum, 4, Color(0.7, 0.3, 1.0), 0.35, 0.5, 0.0, 0.35, 180.0)
+	parcacik(konum, 4, Color(1, 0.25, 0.25), 1.0, 3.0, 2.0, 0.3, 30.0, true, true, Vector3(0.5, 0.2, 0.5))
 
 
 static func isik_flas(konum: Vector3, renk: Color, enerji := 6.0, menzil := 7.0, sure := 0.35) -> void:

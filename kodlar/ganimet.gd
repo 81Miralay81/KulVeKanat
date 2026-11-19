@@ -45,12 +45,13 @@ func _ready() -> void:
 			alt.position.y = -0.6
 			alt.material_override = m.material_override
 			m.add_child(alt)
-	var isik := OmniLight3D.new()
-	isik.light_color = renk
-	isik.light_energy = 1.5
-	isik.omni_range = 3.0
-	isik.position.y = 0.8
-	add_child(isik)
+	if tur == "esya":     # altın yığınlarında ışık yok (çok ışık = yavaşlama)
+		var isik := OmniLight3D.new()
+		isik.light_color = renk
+		isik.light_energy = 1.5
+		isik.omni_range = 3.0
+		isik.position.y = 0.8
+		add_child(isik)
 	if tur == "esya":
 		var yuk: float = 2.5 + esya["nadirlik"] * 2.0
 		Efekt.isik_sutunu(global_position, renk, yuk, 0.25 + esya["nadirlik"] * 0.08, -1, 1.6 + esya["nadirlik"] * 0.4).reparent(self)

@@ -14,6 +14,7 @@ var _seri := 0
 var _seri_sure := 0.0
 var mobil_duzen := false
 var buyuk_harita := false        ## büyük harita açık mı
+var _canta_ikon: Texture2D
 
 const YETENEK_SIRA := ["saldir", "yetenek1", "yetenek2", "yetenek3", "yetenek4"]
 const TUS := {"saldir": "SOL", "yetenek1": "SAĞ/1", "yetenek2": "2", "yetenek3": "BOŞLUK", "yetenek4": "4", "son_vurus": "R", "iksir": "Q"}
@@ -31,6 +32,7 @@ func _ready() -> void:
 			"yetenek4": "meteor", "son_vurus": "son", "iksir": "iksir"}
 	for ad in harita:
 		_ikonlar[ad] = load("res://assets/ikon/%s.png" % harita[ad])
+	_canta_ikon = load("res://assets/ikon/yuva_canta.png")
 
 
 func mesaj(metin: String, renk := Color.WHITE, buyuk := false) -> void:
@@ -43,11 +45,10 @@ func mesaj(metin: String, renk := Color.WHITE, buyuk := false) -> void:
 		_mesajlar.pop_front()
 
 
-func esya_bildir(e: Dictionary, takildi: bool) -> void:
-	var metin := "%s  [%s]  %s" % [e["ad"], Esya.NADIRLIK[e["nadirlik"]]["ad"], Esya.ozet(e)]
-	if not takildi:
-		metin += "  → altına çevrildi"
-	_bildirimler.append([metin, Esya.renk(e), 4.0, takildi])
+func esya_bildir(e: Dictionary, sonuc: String) -> void:
+	var ek := {"takildi": "  → takıldı", "canta": "  → çantaya girdi (I / çanta)", "altin": "  → çanta dolu, altına çevrildi"}
+	var metin := "%s  [%s]  %s%s" % [e["ad"], Esya.NADIRLIK[e["nadirlik"]]["ad"], Esya.ozet(e), ek.get(sonuc, "")]
+	_bildirimler.append([metin, Esya.renk(e), 4.5, sonuc])
 	if _bildirimler.size() > 4:
 		_bildirimler.pop_front()
 
@@ -91,6 +92,15 @@ func _draw() -> void:
 	_boss_cubugu(b)
 	var mh := kucuk_harita_alani()
 	_harita_ciz(mh.position, mh.size.x * 0.5, false)
+	if not mobil_duzen:
+		var ca := canta_alani()
+		draw_rect(ca, Color(0.05, 0.04, 0.05, 0.85))
+		draw_rect(ca, ALTIN_K, false, 2.0)
+		if _canta_ikon:
+			draw_texture_rect(_canta_ikon, Rect2(ca.position + Vector2(6, 6), Vector2(36, 36)), false, Color(1, 0.85, 0.55))
+		_yazi(ca.position + Vector2(48, 30), "ENVANTER (I)  %d/%d" % [kahraman.canta.size(), Kahraman.CANTA_MAX], 16, Color(0.95, 0.88, 0.75))
+	if Oyun.fps_goster:
+		_yazi(Vector2(12, b.y - 14 if mobil_duzen else 22), "FPS %d" % Engine.get_frames_per_second(), 18, Color(0.6, 1, 0.6))
 	if buyuk_harita:
 		draw_rect(Rect2(Vector2.ZERO, b), Color(0, 0, 0, 0.72))
 		var r := minf(b.x, b.y) * 0.4
@@ -367,3 +377,8 @@ func _harita_ciz(c: Vector2, r: float, buyuk: bool) -> void:
 		draw_polyline(PackedVector2Array([ok[0], ok[1], ok[2], ok[3], ok[0]]), Color(0.3, 0.12, 0.0), 1.5, true)
 	if not buyuk:
 		_yazi(Vector2(c.x - r, c.y + r + 24), "HARİTA (M)" if not mobil_duzen else "HARİTA", 14, Color(0.85, 0.78, 0.65), HORIZONTAL_ALIGNMENT_CENTER, r * 2)
+
+
+func canta_alani() -> Rect2:
+	var mh := kucuk_harita_alani()
+	return Rect2(mh.position + Vector2(-mh.size.x * 0.5 - 40, mh.size.y * 0.5 + 34), Vector2(mh.size.x + 40, 48))

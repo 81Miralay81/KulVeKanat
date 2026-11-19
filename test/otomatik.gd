@@ -138,6 +138,30 @@ func _process(dt: float) -> void:
 				print("HARITA KAPANDI ", not ana.hud.buyuk_harita, " DEVAM ", not get_tree().paused)
 				_adim += 1
 		18:
-			if _t > 17.5:
+			if _t > 17.4:
+				for i in 9:
+					k.esya_al(Esya.uret(8, i % 4))
+				var ws := DisplayServer.window_get_size()
+				var vs := ana.get_viewport().get_visible_rect().size
+				var cb: Vector2 = ana.dokunmatik._dugmeler["canta"]["merkez"]
+				_dokun(5, cb * (float(ws.x) / vs.x), true)
+				_adim += 1
+		19:
+			if _t > 17.7:
+				_dokun(5, Vector2.ZERO, false)
+				print("ENVANTER ACIK ", ana.envanter.visible, " CANTA ", k.canta.size(), " TAKILI ", k.esyalar.keys())
+				ana.envanter._canta_sec(0)
+				_adim += 1
+		20:
+			if _t > 18.0:
+				_foto("09_envanter")
+				var once: int = k.canta.size()
+				ana.envanter._tak()
+				print("TAKILDI canta ", once, " -> ", k.canta.size())
+				ana.envanter.kapat_()
+				print("ENVANTER KAPANDI ", not ana.envanter.visible, " DEVAM ", not get_tree().paused)
+				_adim += 1
+		21:
+			if _t > 18.5:
 				print("SEVIYE ", k.seviye, " CAN ", int(k.can), " DALGA ", ana.dalga, " OLDURULEN ", ana._oldurulen)
 				get_tree().quit()

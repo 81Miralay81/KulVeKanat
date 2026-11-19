@@ -39,6 +39,7 @@ var _itme := Vector3.ZERO
 var _govdeler: Array[MeshInstance3D] = []
 var _flas: StandardMaterial3D
 var _flas_deger := 0.0
+var _flas_acik := false
 var _boss_yetenek := 6.0
 var _boss_cagir := 14.0
 var _etiket: Label3D
@@ -137,8 +138,10 @@ func _physics_process(dt: float) -> void:
 	_flas_deger = maxf(0.0, _flas_deger - dt * 6.0)
 	_flas.albedo_color.a = _flas_deger * 0.8
 	var flas_acik := _flas_deger > 0.01
-	for m in _govdeler:
-		m.material_overlay = _flas if flas_acik else null
+	if flas_acik != _flas_acik:
+		_flas_acik = flas_acik
+		for m in _govdeler:
+			m.material_overlay = _flas if flas_acik else null
 	_saldiri_bekleme -= dt
 	_itme = _itme.move_toward(Vector3.ZERO, dt * 30.0)
 
@@ -224,8 +227,9 @@ func _oynat(a: String, h := 1.0) -> void:
 func _ayrisma() -> Vector3:
 	# Düşmanlar üst üste binmesin
 	var itis := Vector3.ZERO
-	for d in get_tree().get_nodes_in_group("dusman"):
-		if d == self or d.olu:
+	var liste: Array = ana.dusmanlar if ana else get_tree().get_nodes_in_group("dusman")
+	for d in liste:
+		if d == self or not is_instance_valid(d) or d.olu:
 			continue
 		var f: Vector3 = global_position - d.global_position
 		f.y = 0

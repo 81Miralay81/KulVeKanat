@@ -4,7 +4,7 @@ extends CharacterBody3D
 
 signal oldu
 signal seviye_atladi(seviye: int)
-signal esya_alindi(esya: Dictionary, takildi: bool)
+signal esya_alindi(esya: Dictionary, sonuc: String)   ## sonuc: takildi, canta, altin
 signal yetenek_acildi(ad: String)
 
 const HIZ := 6.2
@@ -24,6 +24,8 @@ var ofke := 0.0               ## son vuruş çubuğu (0-100)
 var altin := 0
 var iksir := 3
 var esyalar := {}             ## yuva -> eşya
+var canta: Array = []          ## çantadaki eşyalar
+const CANTA_MAX := 24
 var temel := {"hasar": 28.0, "can": 320.0, "mana": 120.0, "kritik": 8.0, "hiz": 0.0, "zirh": 0.0}
 
 # --- durum
@@ -47,6 +49,7 @@ var _son_vurus_sure := 0.0
 var _hasar_flas := 0.0
 var _govdeler: Array[MeshInstance3D] = []
 var _flas_mat: StandardMaterial3D
+var _flas_acik := false
 
 var bekleme := {"yetenek1": 0.0, "yetenek2": 0.0, "yetenek3": 0.0, "yetenek4": 0.0, "iksir": 0.0}
 const BEKLEME := {"yetenek1": 8.0, "yetenek2": 5.0, "yetenek3": 3.5, "yetenek4": 10.0, "iksir": 10.0}
@@ -146,16 +149,56 @@ func acik_mi(eylem: String) -> bool:
 	return seviye >= int(ACILMA.get(eylem, 1))
 
 
+func _can_oranini_koru(islem: Callable) -> void:
+	var oran := can / maxf(1.0, deger("can"))
+	islem.call()
+	can = minf(deger("can"), deger("can") * oran)
+	mana = minf(mana, deger("mana"))
+
+
 func esya_al(e: Dictionary) -> void:
 	var y: String = e["yuva"]
-	var takildi := Esya.puan(e) > Esya.puan(esyalar.get(y, {}))
-	if takildi:
-		var oran := can / maxf(1.0, deger("can"))
-		esyalar[y] = e
-		can = deger("can") * oran
+	if not esyalar.has(y):
+		_can_oranini_koru(func(): esyalar[y] = e)
+		esya_alindi.emit(e, "takildi")
+	elif canta.size() < CANTA_MAX:
+		canta.append(e)
+		esya_alindi.emit(e, "canta")
 	else:
-		altin += 15 + e["seviye"] * 3 * (e["nadirlik"] + 1)
-	esya_alindi.emit(e, takildi)
+		altin += satis_fiyati(e)
+		esya_alindi.emit(e, "altin")
+
+
+func satis_fiyati(e: Dictionary) -> int:
+	return 10 + int(e["seviye"]) * 3 * (int(e["nadirlik"]) + 1) * (int(e["nadirlik"]) + 1)
+
+
+func tak(i: int) -> void:
+	if i < 0 or i >= canta.size():
+		return
+	var e: Dictionary = canta[i]
+	canta.remove_at(i)
+	var y: String = e["yuva"]
+	_can_oranini_koru(func():
+		if esyalar.has(y):
+			canta.insert(i, esyalar[y])
+		esyalar[y] = e)
+
+
+func cikar(y: String) -> bool:
+	if not esyalar.has(y) or canta.size() >= CANTA_MAX:
+		return false
+	_can_oranini_koru(func():
+		canta.append(esyalar[y])
+		esyalar.erase(y))
+	return true
+
+
+func sat(i: int) -> void:
+	if i < 0 or i >= canta.size():
+		return
+	altin += satis_fiyati(canta[i])
+	canta.remove_at(i)
 
 
 # ------------------------------------------------------------------ girdi
@@ -236,8 +279,11 @@ func _physics_process(dt: float) -> void:
 			kanat.ac(0.35)
 	_hasar_flas = maxf(0.0, _hasar_flas - dt * 4.0)
 	_flas_mat.albedo_color.a = _hasar_flas * 0.55
-	for m in _govdeler:
-		m.material_overlay = _flas_mat if _hasar_flas > 0.01 else null
+	var flas_acik := _hasar_flas > 0.01
+	if flas_acik != _flas_acik:
+		_flas_acik = flas_acik
+		for m in _govdeler:
+			m.material_overlay = _flas_mat if flas_acik else null
 
 	var giris := _kamera_yonu(Oyun.hareket_vektoru())
 	var hiz := HIZ * (1.0 + deger("hiz") / 100.0) * (1.25 if _son_vurus_sure > 0 else 1.0)
@@ -555,7 +601,7 @@ func _son_vurus() -> void:
 		Ses.cal("patlama", 0.0)
 		if ana:
 			ana.kamera_sars(1.0)
-			ana.vurus_duraklat(0.12)
+			ana.vurus_duraklat(0.07)
 		_alan_hasari(global_position, 8.0, 4.5, 14.0, true)
 	, 1.2)
 	if ana:
@@ -590,8 +636,6 @@ func hasar_hesapla(carpan: float) -> Array:
 func _vur(d: Node, carpan: float, itme: float) -> void:
 	var sonuc := hasar_hesapla(carpan)
 	d.hasar_al(sonuc[0], sonuc[1], global_position, itme)
-	if sonuc[1] and ana:
-		ana.vurus_duraklat(0.035)
 
 
 func _koni_hasari(menzil: float, aci: float, carpan: float, itme: float) -> int:

@@ -19,6 +19,8 @@ var _font: Font
 var _ikonlar := {}
 var duraklat_cagri: Callable
 var harita_cagri: Callable    ## dokunuş haritadaysa haritayı açar/kapatır (true döner)
+var envanter_cagri: Callable
+var _canta_ikon: Texture2D
 
 
 func _ready() -> void:
@@ -31,6 +33,7 @@ func _ready() -> void:
 	for ad in harita:
 		_ikonlar[ad] = load("res://assets/ikon/%s.png" % harita[ad])
 	Oyun.girdiler_birakildi.connect(_hepsini_birak)
+	_canta_ikon = load("res://assets/ikon/yuva_canta.png")
 	visibility_changed.connect(func():
 		if not visible:
 			_hepsini_birak())
@@ -53,6 +56,7 @@ func _yerlesim() -> void:
 		_dugmeler[sira[i]] = {"merkez": ana + Vector2(cos(a), sin(a)) * 155.0, "r": 42.0}
 	_dugmeler["iksir"] = {"merkez": Vector2(b.x - 430, b.y - 58), "r": 34.0}
 	_dugmeler["duraklat"] = {"merkez": Vector2(b.x - 44, 44), "r": 28.0}
+	_dugmeler["canta"] = {"merkez": Vector2(b.x - 112, 44), "r": 28.0}
 	queue_redraw()
 
 
@@ -92,6 +96,10 @@ func _bas(index: int, p: Vector2) -> bool:
 		if en_yakin == "duraklat":
 			if duraklat_cagri.is_valid():
 				duraklat_cagri.call()
+			return true
+		if en_yakin == "canta":
+			if envanter_cagri.is_valid():
+				envanter_cagri.call()
 			return true
 		_parmak[index] = en_yakin
 		_basili[en_yakin] = true
@@ -185,6 +193,15 @@ func _draw() -> void:
 		var c: Vector2 = d["merkez"]
 		var r: float = d["r"]
 		var basili: bool = _basili.has(ad)
+		if ad == "canta":
+			draw_circle(c, r, Color(0, 0, 0, 0.4))
+			draw_arc(c, r, 0, TAU, 32, Color(1, 0.8, 0.5, 0.6), 2.0, true)
+			if _canta_ikon:
+				draw_texture_rect(_canta_ikon, Rect2(c - Vector2(16, 16), Vector2(32, 32)), false, Color(1, 0.88, 0.6))
+			if kahraman and kahraman.canta.size() > 0:
+				draw_circle(c + Vector2(18, -18), 11, Color(0.85, 0.2, 0.1))
+				draw_string(_font, c + Vector2(8, -11), str(kahraman.canta.size()), HORIZONTAL_ALIGNMENT_CENTER, 20, 16, Color.WHITE)
+			continue
 		if ad == "duraklat":
 			draw_circle(c, r, Color(0, 0, 0, 0.4))
 			draw_arc(c, r, 0, TAU, 32, Color(1, 0.8, 0.5, 0.6), 2.0, true)

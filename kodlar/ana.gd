@@ -8,6 +8,10 @@ var kahraman: Kahraman
 var hud: Hud
 var dokunmatik: Dokunmatik
 var boss: Dusman
+var dusmanlar: Array = []       ## her fizik karesinde bir kez güncellenir (hızlı erişim)
+var envanter: Envanter
+var _env: Environment
+var _ay: DirectionalLight3D
 
 var durum := "menu"            ## menu, oyun, olum
 var dalga := 0
@@ -78,13 +82,16 @@ func _ready() -> void:
 	dokunmatik.kahraman = kahraman
 	dokunmatik.hud = hud
 	dokunmatik.duraklat_cagri = _duraklat_ac_kapa
-	dokunmatik.harita_cagri = func(p: Vector2) -> bool: return durum == "oyun" and not _duraklat_menu.visible and hud.harita_dokunus(p)
+	dokunmatik.envanter_cagri = _envanter_ac
+	dokunmatik.harita_cagri = func(p: Vector2) -> bool: return durum == "oyun" and not _duraklat_menu.visible and not envanter.visible and hud.harita_dokunus(p)
 	dok_katman.add_child(dokunmatik)
 	Oyun.dokunmatik_goster_degisti.connect(func(_a):
 		hud.mobil_duzen = true
 		dokunmatik.visible = durum == "oyun")
 
 	_menuleri_kur()
+	_kalite_uygula()
+	get_tree().create_timer(0.3).timeout.connect(func(): Efekt.isinma(kahraman.global_position + Vector3(2, 0, 2)))
 	var g := Guncelleme.new()
 	g.sonuc.connect(_guncelleme_sonucu)
 	add_child(g)
@@ -99,6 +106,7 @@ func _ready() -> void:
 # ------------------------------------------------------------------ ortam
 func _ortam() -> void:
 	var env := Environment.new()
+	_env = env
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.02, 0.015, 0.025)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -131,6 +139,7 @@ func _ortam() -> void:
 	add_child(we)
 
 	var ay := DirectionalLight3D.new()
+	_ay = ay
 	ay.light_color = Color(0.58, 0.64, 0.95)
 	ay.light_energy = 0.42
 	ay.rotation_degrees = Vector3(-55, -30, 0)
@@ -141,6 +150,10 @@ func _ortam() -> void:
 
 
 # ------------------------------------------------------------------ döngü
+func _physics_process(_dt: float) -> void:
+	dusmanlar = get_tree().get_nodes_in_group("dusman")
+
+
 func _process(dt: float) -> void:
 	_kamera_guncelle(dt)
 	if durum != "oyun" or get_tree().paused:
@@ -151,7 +164,12 @@ func _process(dt: float) -> void:
 func _unhandled_input(e: InputEvent) -> void:
 	if durum != "oyun":
 		return
-	if e.is_action_pressed("harita") and not _duraklat_menu.visible:
+	if e.is_action_pressed("fps"):
+		Oyun.fps_goster = not Oyun.fps_goster
+	if e.is_action_pressed("envanter") and not _duraklat_menu.visible and not hud.buyuk_harita and not envanter.visible:
+		_envanter_ac()
+		get_viewport().set_input_as_handled()
+	elif e.is_action_pressed("harita") and not _duraklat_menu.visible and not envanter.visible:
 		hud.harita_ac_kapa()
 		get_viewport().set_input_as_handled()
 	elif e.is_action_pressed("duraklat"):
@@ -166,7 +184,12 @@ func _input(e: InputEvent) -> void:
 	# Farenin küçük haritaya tıklaması (dokunmatik olanları Dokunmatik ayrıca ele alır)
 	if durum == "oyun" and e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT \
 			and e.device != InputEvent.DEVICE_ID_EMULATION and not _duraklat_menu.visible:
+		if envanter.visible:
+			return
 		if hud.harita_dokunus(e.position):
+			get_viewport().set_input_as_handled()
+		elif not hud.mobil_duzen and not hud.buyuk_harita and hud.canta_alani().has_point(e.position):
+			_envanter_ac()
 			get_viewport().set_input_as_handled()
 
 
@@ -458,6 +481,7 @@ func _menuleri_kur() -> void:
 	v.add_child(_baslik("KÜL VE KANAT", 76))
 	v.add_child(_yazi_etiket("Kanatix  ·  1. Bölüm: Kül Ovaları", 22, Color(0.85, 0.75, 0.6)))
 	v.add_child(_dugme("BAŞLA", _basla))
+	v.add_child(_kalite_dugmesi())
 	v.add_child(_dugme("KONTROLLER", func():
 		var y: Label = _menu.find_child("Yardim", true, false)
 		y.visible = not y.visible))
@@ -482,6 +506,18 @@ func _menuleri_kur() -> void:
 	surum.size = Vector2(150, 30)
 	_menu.add_child(surum)
 
+	# Envanter
+	envanter = Envanter.new()
+	envanter.theme = _tema
+	envanter.visible = false
+	envanter.kahraman = kahraman
+	envanter.kapandi.connect(func():
+		get_tree().paused = false
+		hud.visible = true
+		dokunmatik.visible = Oyun.dokunmatik_acik and durum == "oyun"
+		Oyun.tum_girdileri_birak())
+	_menu_katman.add_child(envanter)
+
 	# Duraklatma
 	_duraklat_menu = _kutu("Duraklat")
 	v = _duraklat_menu.find_child("Liste", true, false)
@@ -490,6 +526,10 @@ func _menuleri_kur() -> void:
 	esyalar.name = "Esyalar"
 	v.add_child(esyalar)
 	v.add_child(_dugme("DEVAM", _duraklat_ac_kapa))
+	v.add_child(_dugme("ENVANTER", func():
+		_duraklat_ac_kapa()
+		_envanter_ac()))
+	v.add_child(_kalite_dugmesi())
 	v.add_child(_dugme("YENİDEN BAŞLA", func(): _yeniden(true)))
 	v.add_child(_dugme("ANA MENÜ", func(): _yeniden(false)))
 
@@ -536,7 +576,7 @@ func _duraklat_ac_kapa() -> void:
 	Oyun.tum_girdileri_birak()
 	if p:
 		var l: Label = _duraklat_menu.find_child("Esyalar", true, false)
-		var satirlar := ["Seviye %d  ·  Dalga %d  ·  %d altın  ·  %d düşman" % [kahraman.seviye, dalga, kahraman.altin, _oldurulen], ""]
+		var satirlar := ["Seviye %d  ·  Dalga %d  ·  %d altın  ·  %d düşman  ·  FPS %d" % [kahraman.seviye, dalga, kahraman.altin, _oldurulen, Engine.get_frames_per_second()], ""]
 		for y in Esya.YUVALAR:
 			if kahraman.esyalar.has(y):
 				var e: Dictionary = kahraman.esyalar[y]
@@ -566,3 +606,65 @@ func _guncelleme_sonucu(yeni: bool, surum: String, adres: String) -> void:
 	_guncelleme_kutu.visible = true
 	_guncelleme_kutu.add_child(_yazi_etiket("Yeni sürüm var: %s" % surum, 22, Color(1, 0.7, 0.3)))
 	_guncelleme_kutu.add_child(_dugme("YENİ SÜRÜMÜ İNDİR", func(): OS.shell_open(adres)))
+
+
+
+# ------------------------------------------------------------------ envanter ve grafik kalitesi
+func _envanter_ac() -> void:
+	if durum != "oyun" or _duraklat_menu.visible or hud.buyuk_harita:
+		return
+	Oyun.tum_girdileri_birak()
+	get_tree().paused = true
+	dokunmatik.visible = false
+	hud.visible = false
+	envanter.ac()
+
+
+const KALITE_AD := ["DÜŞÜK", "ORTA", "YÜKSEK"]
+
+
+func _kalite_dugmesi() -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(360, 66)
+	b.text = "GRAFİK: %s" % KALITE_AD[int(Oyun.kayit["kalite"])]
+	b.pressed.connect(func():
+		Oyun.kayit["kalite"] = (int(Oyun.kayit["kalite"]) + 1) % 3
+		Oyun.kaydet()
+		_kalite_uygula()
+		for k in get_tree().get_nodes_in_group("kalite_dugmesi"):
+			k.text = "GRAFİK: %s" % KALITE_AD[int(Oyun.kayit["kalite"])]
+		Ses.cal("dugme", -4.0, 0.0))
+	b.add_to_group("kalite_dugmesi")
+	return b
+
+
+func _kalite_uygula() -> void:
+	var k := int(Oyun.kayit["kalite"])
+	var vp := get_viewport()
+	match k:
+		0:
+			_env.ssao_enabled = false
+			_env.fog_enabled = false
+			_ay.shadow_enabled = false
+			vp.msaa_3d = Viewport.MSAA_DISABLED
+			vp.scaling_3d_scale = 0.75
+			Efekt.kalite = 0.5
+			Efekt.sinir = 40
+		1:
+			_env.ssao_enabled = false
+			_env.fog_enabled = true
+			_ay.shadow_enabled = true
+			_ay.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+			vp.msaa_3d = Viewport.MSAA_2X if not mobil else Viewport.MSAA_DISABLED
+			vp.scaling_3d_scale = 1.0
+			Efekt.kalite = 0.8
+			Efekt.sinir = 60
+		2:
+			_env.ssao_enabled = not mobil
+			_env.fog_enabled = true
+			_ay.shadow_enabled = true
+			_ay.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+			vp.msaa_3d = Viewport.MSAA_4X if not mobil else Viewport.MSAA_2X
+			vp.scaling_3d_scale = 1.0
+			Efekt.kalite = 1.0
+			Efekt.sinir = 90

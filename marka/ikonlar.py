@@ -58,3 +58,33 @@ def icon(kind, size=128):
 for kname in PAL:
     icon(kname).save(os.path.join(OUT, kname + ".png"))
 print("ikonlar tamam")
+
+# Eşya yuvası simgeleri (beyaz, saydam zemin): assets/ikon/yuva_*.png
+def yuva(kind, size=96):
+    s = size * 4; c = s / 2; G = Image.new("RGBA", (s, s), (0, 0, 0, 0)); g = ImageDraw.Draw(G); w = (255, 255, 255, 255)
+    k = s / 320
+    def P(pts): return [(c + x * k, c + y * k) for x, y in pts]
+    if kind == "Silah":
+        g.polygon(P([(-60, 70), (70, -60), (92, -92), (60, -70), (-70, 60)]), fill=w)
+        g.line(P([(-95, 35), (-35, 95)]), fill=w, width=int(22 * k)); g.line(P([(-70, 70), (-110, 110)]), fill=w, width=int(24 * k))
+    elif kind == "Zırh":
+        g.polygon(P([(-90, -80), (-40, -100), (0, -70), (40, -100), (90, -80), (75, 10), (60, 100), (-60, 100), (-75, 10)]), fill=w)
+    elif kind == "Kask":
+        g.pieslice(P([(-90, -100), (90, 80)]), 180, 360, fill=w); g.rectangle(P([(-90, -12), (90, 30)]), fill=w)
+        g.rectangle(P([(-70, 30), (-30, 100)]), fill=w); g.rectangle(P([(30, 30), (70, 100)]), fill=w)
+    elif kind == "Yüzük":
+        g.ellipse(P([(-80, -40), (80, 110)]), outline=w, width=int(26 * k)); g.polygon(P([(-30, -60), (0, -105), (30, -60), (0, -35)]), fill=w)
+    elif kind == "Kanat":
+        for sg in (-1, 1):
+            for i in range(5):
+                a = math.radians(30 + i * 22); L = 120 - i * 14
+                g.line(P([(sg * 8, 25), (sg * math.sin(a) * L, -math.cos(a) * L + 20)]), fill=w, width=int((26 - i * 2) * k))
+    elif kind == "Canta":
+        g.rounded_rectangle(P([(-95, -40), (95, 110)]), radius=int(30 * k), fill=w)
+        g.arc(P([(-55, -110), (55, 10)]), 180, 360, fill=w, width=int(22 * k))
+        g.rectangle(P([(-95, 10), (95, 26)]), fill=(0, 0, 0, 0))
+    return G.resize((size, size), Image.LANCZOS)
+
+for yname, dosya in [("Silah", "silah"), ("Zırh", "zirh"), ("Kask", "kask"), ("Yüzük", "yuzuk"), ("Kanat", "kanat"), ("Canta", "canta")]:
+    yuva(yname).save(os.path.join(OUT, "yuva_" + dosya + ".png"))
+print("yuva simgeleri tamam")
